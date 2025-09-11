@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerald | Portfolio</title>
+  <meta name="description" content="Portfolio website of Gerald Pandaan, a Computer Studies student showcasing projects, skills, certifications, and resume." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            accent: {
+              DEFAULT: '#1d4e89',
+              soft: '#2e6fb8'
+            },
+            base: {
+              light: '#f8f9fb',
+              border: '#e5e9ef',
+              muted: '#5b6573',
+              dark: '#1b2533'
+            }
+          },
+          fontFamily: {
+            display: ['Poppins', 'system-ui', 'sans-serif'],
+            body: ['Inter', 'system-ui', 'sans-serif']
+          },
+          boxShadow: {
+            surface: '0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.10)',
+            surfaceHover: '0 4px 12px -2px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06)'
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="assets/css/custom.css" />
+</head>
+<body class="font-body antialiased leading-relaxed">
+  <!-- Navigation -->
+  <nav class="sticky top-0 z-30 backdrop-blur bg-white/80 border-b border-base-border">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+      <a href="#hero" class="font-display text-xl font-semibold tracking-tight text-accent">Gerald<span class="text-base-muted">.</span></a>
+      <button id="navToggle" class="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-base-muted hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2" aria-label="Toggle navigation">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <ul id="navMenu" class="hidden sm:flex gap-6 text-sm font-medium text-base-muted">
+        <li><a class="hover:text-accent focus:text-accent focus:outline-none" href="#about">About</a></li>
+        <li><a class="hover:text-accent focus:text-accent" href="#cv">CV</a></li>
+        <li><a class="hover:text-accent focus:text-accent" href="#certifications">Certifications</a></li>
+        <li><a class="hover:text-accent focus:text-accent" href="#projects">Projects</a></li>
+        <li><a class="hover:text-accent focus:text-accent" href="#contact">Contact</a></li>
+      </ul>
+    </div>
+    <div class="sm:hidden" id="mobileNav">
+      <ul class="px-4 pb-4 space-y-2 text-sm font-medium text-base-muted" id="navMenu">
+        <li><a class="block py-2 hover:text-accent" href="#about">About</a></li>
+        <li><a class="block py-2 hover:text-accent" href="#cv">CV</a></li>
+        <li><a class="block py-2 hover:text-accent" href="#certifications">Certifications</a></li>
+        <li><a class="block py-2 hover:text-accent" href="#projects">Projects</a></li>
+        <li><a class="block py-2 hover:text-accent" href="#contact">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header id="hero" class="relative overflow-hidden bg-base-light">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 flex flex-col md:flex-row items-center gap-12">
+      <div class="flex-1">
+        <p class="uppercase tracking-wider text-xs font-semibold text-accent mb-3">Computer Studies Student</p>
+        <h1 class="font-display text-4xl sm:text-5xl font-bold leading-tight mb-6">
+          Hi, I'm <span class="text-gradient">Gerald</span>.<br />
+          <span class="text-base-muted font-medium">IT Student</span>
+        </h1>
+        <p class="text-base-muted max-w-xl mb-8">I'm a passionate Computer Studies student focused on clean, efficient code and creating meaningful technology that solves real problems. Explore my projects, certifications, and academic journey below.</p>
+        <div class="flex flex-wrap gap-4">
+          <a href="#cv" class="btn-elevate inline-flex items-center gap-2 px-6 py-3 rounded-md border border-accent text-accent font-medium hover:shadow-surfaceHover transition" aria-label="View my CV">
+            <span>View CV</span>
+          </a>
+          <a href="#projects" class="btn-elevate inline-flex items-center gap-2 px-6 py-3 rounded-md bg-accent text-white font-medium hover:bg-accent-soft transition" aria-label="View my projects">
+            <span>View Projects</span>
+          </a>
+          <a href="assets/cv/GERALD%20PANDAAN.pdf" class="btn-elevate inline-flex items-center gap-2 px-6 py-3 rounded-md bg-white border border-base-border text-base-muted font-medium hover:text-accent transition" download="Gerald-Pandaan-CV.pdf" aria-label="Download resume PDF">
+            <span>Download CV</span>
+          </a>
+        </div>
+      </div>
+      <div class="flex-1 max-w-md w-full">
+        <div class="relative card-surface p-6 md:p-8 text-center">
+          <img src="assets/img/me_image.jfif" alt="Profile photo of Gerald Pandaan" class="w-36 h-36 mx-auto mb-6 rounded-full object-cover shadow-surface" />
+          <p class="text-base-muted mb-4">Focused on front-end development, problem solving, and continuous learning. I enjoy translating ideas into elegant, maintainable, and accessible interfaces.</p>
+          <div class="flex flex-wrap gap-2 justify-center">
+            <span class="badge-skill">HTML</span>
+            <span class="badge-skill">CSS</span>
+            <span class="badge-skill">JavaScript</span>
+            <span class="badge-skill">Python</span>
+            <span class="badge-skill">Git</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- About -->
+  <section id="about" class="py-20">
+    <div class="max-w-5xl mx-auto px-4">
+      <header class="section-heading">
+        <h2 class="font-display text-3xl font-bold">About</h2>
+      </header>
+      <div class="grid md:grid-cols-3 gap-10">
+        <div class="md:col-span-2 prose-light space-y-5">
+          <p><strong class="text-accent">Gerald Pandaan</strong> is a dedicated Computer Studies student with a growing focus on software development, user-centered design, and problem solving. He values clarity, maintainability, and performance in code.</p>
+          <p>He explores modern web technologies, collaborates on academic and personal projects, and continuously refines his technical and analytical skills.</p>
+          <p>Outside academics, he invests time in learning new frameworks, contributing to code repositories, and studying clean architecture patterns.</p>
+        </div>
+        <div class="space-y-4">
+          <div class="card-surface p-5">
+            <h3 class="font-semibold mb-3 text-sm tracking-wide uppercase text-accent">Core Skills</h3>
+            <div class="flex flex-wrap gap-2">
+              <span class="badge-skill">HTML5</span>
+              <span class="badge-skill">CSS3</span>
+              <span class="badge-skill">Tailwind</span>
+              <span class="badge-skill">JavaScript</span>
+              <span class="badge-skill">Python</span>
+              <span class="badge-skill">Git & GitHub</span>
+              <span class="badge-skill">Responsive Design</span>
+              <span class="badge-skill">Accessibility</span>
+            </div>
+          </div>
+          <div class="card-surface p-5">
+            <h3 class="font-semibold mb-3 text-sm tracking-wide uppercase text-accent">Learning</h3>
+            <div class="flex flex-wrap gap-2">
+              <span class="badge-skill">React</span>
+              <span class="badge-skill">Node.js</span>
+              <span class="badge-skill">APIs</span>
+              <span class="badge-skill">Database Basics</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CV / Resume -->
+  <section id="cv" class="py-20 bg-white">
+    <div class="max-w-5xl mx-auto px-4">
+      <header class="section-heading flex items-center justify-between">
+        <h2 class="font-display text-3xl font-bold">Curriculum Vitae</h2>
+        <button onclick="window.print()" class="no-print text-xs bg-accent text-white px-3 py-2 rounded-md hover:bg-accent-soft transition print-resume-btn" aria-label="Print resume">Print</button>
+      </header>
+      <div class="space-y-4">
+        <div class="flex flex-wrap gap-3 no-print">
+          <a href="assets/cv/GERALD%20PANDAAN.pdf" target="_blank" rel="noopener" class="btn-elevate inline-flex items-center gap-2 px-4 py-2 rounded-md border border-accent text-accent font-medium hover:shadow-surfaceHover transition" aria-label="Open CV in a new tab">Open CV in new tab</a>
+          <a href="assets/cv/GERALD%20PANDAAN.pdf" download="Gerald-Pandaan-CV.pdf" class="btn-elevate inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent text-white font-medium hover:bg-accent-soft transition" aria-label="Download CV PDF">Download CV</a>
+        </div>
+        <div class="card-surface p-2">
+          <object data="assets/cv/GERALD%20PANDAAN.pdf" type="application/pdf" width="100%" style="height: 80vh;">
+            <p class="p-4 text-sm">Your browser can't display PDFs. You can <a href="assets/cv/GERALD%20PANDAAN.pdf" target="_blank" rel="noopener" class="text-accent underline">open the CV in a new tab</a> or <a href="assets/cv/GERALD%20PANDAAN.pdf" download="Gerald-Pandaan-CV.pdf" class="text-accent underline">download it</a>.</p>
+          </object>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Certifications -->
+  <section id="certifications" class="py-20">
+    <div class="max-w-6xl mx-auto px-4">
+      <header class="section-heading">
+        <h2 class="font-display text-3xl font-bold">Certifications</h2>
+      </header>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Certification Card -->
+        <article class="card-surface p-6 flex flex-col" tabindex="0" aria-label="Certification: Web Development Basics">
+          <h3 class="font-semibold mb-2">Web Development Basics</h3>
+          <p class="text-sm text-base-muted flex-grow">Completed foundational training covering HTML, CSS, and JavaScript essentials.</p>
+          <a href="#" class="mt-4 inline-flex items-center text-sm text-accent hover:underline" aria-label="View details for Web Development Basics">View Details →</a>
+        </article>
+        <article class="card-surface p-6 flex flex-col" tabindex="0" aria-label="Certification: Python Programming">
+          <h3 class="font-semibold mb-2">Python Programming</h3>
+            <p class="text-sm text-base-muted flex-grow">Introductory certificate demonstrating understanding of Python fundamentals.</p>
+            <a href="#" class="mt-4 inline-flex items-center text-sm text-accent hover:underline" aria-label="View details for Python Programming">View Details →</a>
+        </article>
+        <article class="card-surface p-6 flex flex-col" tabindex="0" aria-label="Certification: Version Control with Git">
+          <h3 class="font-semibold mb-2">Version Control with Git</h3>
+            <p class="text-sm text-base-muted flex-grow">Covers branching strategies, commits, pull requests, and collaboration.</p>
+            <a href="#" class="mt-4 inline-flex items-center text-sm text-accent hover:underline" aria-label="View details for Version Control with Git">View Details →</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Projects -->
+  <section id="projects" class="py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-4">
+      <header class="section-heading flex items-center justify-between">
+        <h2 class="font-display text-3xl font-bold">Projects</h2>
+        <a href="https://github.com/username" target="_blank" rel="noopener" class="text-sm text-accent hover:underline" aria-label="View more projects on GitHub">View All →</a>
+      </header>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Project Card -->
+        <!-- <article class="card-surface p-6 flex flex-col" aria-label="Project: Portfolio Website">
+          <h3 class="font-semibold mb-2">Portfolio Website</h3>
+          <p class="text-sm text-base-muted flex-grow">A responsive personal portfolio built using HTML, CSS (Tailwind), and accessible UI patterns.</p>
+          <div class="flex flex-wrap gap-2 mt-4 text-xs">
+            <span class="badge-skill">HTML</span>
+            <span class="badge-skill">Tailwind</span>
+            <span class="badge-skill">Accessibility</span>
+          </div>
+          <div class="mt-4 flex gap-4 text-sm">
+            <a href="#" class="text-accent hover:underline" aria-label="View live demo of Portfolio Website">Demo</a>
+            <a href="#" class="text-accent hover:underline" aria-label="View repository of Portfolio Website">Code</a>
+          </div>
+        </article> -->
+        <!-- <article class="card-surface p-6 flex flex-col" aria-label="Project: Study Planner App">
+          <h3 class="font-semibold mb-2">Study Planner App</h3>
+          <p class="text-sm text-base-muted flex-grow">A simple planner for organizing study tasks and tracking progress.</p>
+          <div class="flex flex-wrap gap-2 mt-4 text-xs">
+            <span class="badge-skill">JavaScript</span>
+            <span class="badge-skill">LocalStorage</span>
+            <span class="badge-skill">UI/UX</span>
+          </div>
+          <div class="mt-4 flex gap-4 text-sm">
+            <a href="#" class="text-accent hover:underline" aria-label="View live demo of Study Planner App">Demo</a>
+            <a href="#" class="text-accent hover:underline" aria-label="View repository of Study Planner App">Code</a>
+          </div>
+        </article> -->
+        <!-- <article class="card-surface p-6 flex flex-col" aria-label="Project: Algorithm Practice Repo">
+          <h3 class="font-semibold mb-2">Algorithm Practice Repo</h3>
+          <p class="text-sm text-base-muted flex-grow">Collection of solved algorithm problems with clean, documented solutions.</p>
+          <div class="flex flex-wrap gap-2 mt-4 text-xs">
+            <span class="badge-skill">Python</span>
+            <span class="badge-skill">Problem Solving</span>
+            <span class="badge-skill">Git</span>
+          </div>
+          <div class="mt-4 flex gap-4 text-sm">
+            <a href="#" class="text-accent hover:underline" aria-label="View live demo of Algorithm Practice Repo">Demo</a>
+            <a href="#" class="text-accent hover:underline" aria-label="View repository of Algorithm Practice Repo">Code</a>
+          </div>
+        </article> -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="py-20">
+    <div class="max-w-4xl mx-auto px-4">
+      <header class="section-heading">
+        <h2 class="font-display text-3xl font-bold">Contact</h2>
+      </header>
+      <div class="grid md:grid-cols-2 gap-12">
+        <form id="contactForm" class="space-y-5 card-surface p-6" novalidate aria-label="Contact form">
+          <div>
+            <label for="name" class="block text-sm font-medium mb-1">Name</label>
+            <input id="name" name="name" type="text" required class="w-full rounded-md border border-base-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Your name" />
+          </div>
+          <div>
+            <label for="email" class="block text-sm font-medium mb-1">Email</label>
+            <input id="email" name="email" type="email" required class="w-full rounded-md border border-base-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="you@example.com" />
+          </div>
+          <div>
+            <label for="message" class="block text-sm font-medium mb-1">Message</label>
+            <textarea id="message" name="message" rows="5" required class="w-full rounded-md border border-base-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="How can I help?"></textarea>
+          </div>
+          <button type="submit" class="btn-elevate w-full bg-accent text-white py-3 rounded-md font-medium hover:bg-accent-soft transition" aria-label="Send message">Send Message</button>
+          <p class="text-xs text-base-muted">This form currently provides a demo alert only. Integrate a backend or service for real submissions.</p>
+        </form>
+        <div class="space-y-6">
+          <p class="text-base-muted">Feel free to reach out for academic collaborations, project discussions, or internship opportunities. I'm always open to learning from others and contributing to meaningful work.</p>
+          <ul class="space-y-2 text-sm text-base-muted">
+            <li><strong class="text-accent">Email:</strong> <a href="mailto:geraldnazpandaan1@gmail.com" class="hover:underline">geraldnazpandaan1@gmail.com</a></li>
+            <li><strong class="text-accent">GitHub:</strong> <a href="https://github.com/Eraal" target="_blank" rel="noopener" class="hover:underline">https://github.com/Eraal</a></li>
+            <li><strong class="text-accent">LinkedIn:</strong> <a href="https://www.linkedin.com/in/gerald-pandaan-27b53b2a9/" target="_blank" rel="noopener" class="hover:underline">https://www.linkedin.com/in/gerald-pandaan-27b53b2a9/</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="py-8 border-t border-base-border text-center text-sm text-base-muted">
+    <p>&copy; <span id="year"></span> Gerald Pandaan. All rights reserved.</p>
+  </footer>
+
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>
