@@ -3,35 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gerald | Portfolio</title>
-  <meta name="description" content="Portfolio website of Gerald Pandaan, a Computer Studies student showcasing projects, skills, certifications, and resume." />
+  <title>Gerald Pandaan | Full-Stack Developer & IT Graduate</title>
+  <meta name="description" content="Gerald Pandaan, Cum Laude IT graduate with 2 live production systems. Full-stack developer experienced in Python, TypeScript, Flask, PostgreSQL, MongoDB, and cloud deployment. Open to entry-level IT and software development roles." />
+  <meta name="keywords" content="Gerald Pandaan, Full-Stack Developer, IT Graduate, Portfolio, Python, TypeScript, Flask, PostgreSQL, MongoDB, Web Developer Philippines" />
+  <meta name="author" content="Gerald Naz Pandaan" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Gerald Pandaan | Full-Stack Developer & IT Graduate" />
+  <meta property="og:description" content="Cum Laude IT graduate with 2 live production systems, from government platforms to university-wide services." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="assets/img/me_image.jfif" />
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            accent: {
-              DEFAULT: '#1d4e89',
-              soft: '#2e6fb8'
-            },
-            base: {
-              light: '#f8f9fb',
-              border: '#e5e9ef',
-              muted: '#5b6573',
-              dark: '#1b2533'
-            }
+            accent: { DEFAULT: '#3b82f6', soft: '#60a5fa', dark: '#2563eb' },
+            surface: { DEFAULT: '#111827', light: '#1e293b', dark: '#0a0f1a' },
+            text: { primary: '#f1f5f9', secondary: '#94a3b8', muted: '#64748b' }
           },
           fontFamily: {
             display: ['Poppins', 'system-ui', 'sans-serif'],
             body: ['Inter', 'system-ui', 'sans-serif']
-          },
-          boxShadow: {
-            surface: '0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.10)',
-            surfaceHover: '0 4px 12px -2px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06)'
           }
         }
       }
@@ -40,63 +41,105 @@
   <link rel="stylesheet" href="assets/css/custom.css" />
 </head>
 <body class="font-body antialiased leading-relaxed">
-  <!-- Navigation -->
-  <nav class="sticky top-0 z-30 backdrop-blur bg-white/80 border-b border-base-border">
+
+  <!-- ========== NAVIGATION ========== -->
+  <nav class="nav-glass sticky top-0 z-50" id="mainNav">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-      <a href="#hero" class="font-display text-xl font-semibold tracking-tight text-accent">Gerald<span class="text-base-muted">.</span></a>
-      <button id="navToggle" class="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-base-muted hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2" aria-label="Toggle navigation">
-        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <a href="#hero" class="font-display text-xl font-bold tracking-tight text-white">
+        Gerald<span class="text-accent">.</span>
+      </a>
+      <button id="navToggle" class="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-text-secondary hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface-dark" aria-label="Toggle navigation">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <ul id="navMenu" class="hidden sm:flex gap-6 text-sm font-medium text-base-muted">
-        <li><a class="hover:text-accent focus:text-accent focus:outline-none" href="#about">About</a></li>
-        <li><a class="hover:text-accent focus:text-accent" href="#cv">CV</a></li>
-        <li><a class="hover:text-accent focus:text-accent" href="#certifications">Certifications</a></li>
-        <li><a class="hover:text-accent focus:text-accent" href="#projects">Projects</a></li>
-        <li><a class="hover:text-accent focus:text-accent" href="#contact">Contact</a></li>
+      <ul class="hidden sm:flex gap-8 text-sm font-medium">
+        <li><a class="nav-link" href="#about">About</a></li>
+        <li><a class="nav-link" href="#experience">Experience</a></li>
+        <li><a class="nav-link" href="#projects">Projects</a></li>
+        <li><a class="nav-link" href="#certifications">Certifications</a></li>
+        <li><a class="nav-link" href="#contact">Contact</a></li>
       </ul>
     </div>
-    <div class="sm:hidden" id="mobileNav">
-      <ul class="px-4 pb-4 space-y-2 text-sm font-medium text-base-muted" id="navMenu">
-        <li><a class="block py-2 hover:text-accent" href="#about">About</a></li>
-        <li><a class="block py-2 hover:text-accent" href="#cv">CV</a></li>
-        <li><a class="block py-2 hover:text-accent" href="#certifications">Certifications</a></li>
-        <li><a class="block py-2 hover:text-accent" href="#projects">Projects</a></li>
-        <li><a class="block py-2 hover:text-accent" href="#contact">Contact</a></li>
+    <!-- Mobile Menu -->
+    <div class="sm:hidden hidden" id="mobileNav">
+      <ul class="px-4 pb-4 space-y-1 text-sm font-medium border-t border-white/5">
+        <li><a class="block py-3 text-text-secondary hover:text-accent transition" href="#about">About</a></li>
+        <li><a class="block py-3 text-text-secondary hover:text-accent transition" href="#experience">Experience</a></li>
+        <li><a class="block py-3 text-text-secondary hover:text-accent transition" href="#projects">Projects</a></li>
+        <li><a class="block py-3 text-text-secondary hover:text-accent transition" href="#certifications">Certifications</a></li>
+        <li><a class="block py-3 text-text-secondary hover:text-accent transition" href="#contact">Contact</a></li>
       </ul>
     </div>
   </nav>
 
-  <!-- Hero -->
-  <header id="hero" class="relative overflow-hidden bg-base-light">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 flex flex-col md:flex-row items-center gap-12">
-      <div class="flex-1">
-        <p class="uppercase tracking-wider text-xs font-semibold text-accent mb-3">Computer Studies Student</p>
-        <h1 class="font-display text-4xl sm:text-5xl font-bold leading-tight mb-6">
-          Hi, I'm <span class="text-gradient">Gerald</span>.<br />
-          <span class="text-base-muted font-medium">IT Student</span>
+  <!-- ========== HERO ========== -->
+  <header id="hero" class="relative overflow-hidden min-h-[90vh] flex items-center" style="background: linear-gradient(160deg, #0a0f1a 0%, #111827 40%, #0f172a 100%);">
+    <!-- Background Orb -->
+    <div class="glow-orb" style="top: -100px; right: -50px;"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-24 flex flex-col lg:flex-row items-center gap-12 lg:gap-16 relative z-10 w-full">
+      <!-- Left: Text Content -->
+      <div class="flex-1 reveal">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="badge-status">Open to Work</span>
+        </div>
+        <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-4">
+          Hi, I'm <span class="text-gradient">Gerald Pandaan</span>
         </h1>
-        <p class="text-base-muted max-w-xl mb-8">I'm a passionate Computer Studies student focused on clean, efficient code and creating meaningful technology that solves real problems. Explore my projects, certifications, and academic journey below.</p>
-        <div class="flex flex-wrap gap-4">
-          <a href="#cv" class="btn-elevate inline-flex items-center gap-2 px-6 py-3 rounded-md border border-accent text-accent font-medium hover:shadow-surfaceHover transition" aria-label="View my CV">
-            <span>View CV</span>
+        <p class="text-lg sm:text-xl text-text-secondary font-medium mb-5">
+          IT Graduate · Full-Stack Developer · <span class="text-accent-soft">Cum Laude</span>
+        </p>
+        <p class="text-text-secondary max-w-xl mb-8 leading-relaxed">
+          I build production systems that real organizations use every day, from a government digital governance platform to a university-wide counseling system. Graduated with Latin Honors and ready to bring that same dedication to your team.
+        </p>
+
+        <!-- Hero Stats -->
+        <div class="hero-stats mb-8">
+          <div class="hero-stat">
+            <div class="hero-stat-value" data-count="2">0</div>
+            <div class="hero-stat-label">Live Systems</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value" data-count="4">0</div>
+            <div class="hero-stat-label">Projects</div>
+          </div>
+        </div>
+
+        <!-- CTAs -->
+        <div class="flex flex-wrap gap-3">
+          <a href="#projects" class="btn-primary" aria-label="View my projects">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            View Projects
           </a>
-          <a href="#projects" class="btn-elevate inline-flex items-center gap-2 px-6 py-3 rounded-md bg-accent text-white font-medium hover:bg-accent-soft transition" aria-label="View my projects">
-            <span>View Projects</span>
+          <a href="assets/cv/resume.pdf" class="btn-secondary" download="Gerald-Pandaan-Resume.pdf" aria-label="Download resume PDF">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Download Resume
           </a>
-          <a href="assets/cv/GERALD%20PANDAAN.pdf" class="btn-elevate inline-flex items-center gap-2 px-6 py-3 rounded-md bg-white border border-base-border text-base-muted font-medium hover:text-accent transition" download="Gerald-Pandaan-CV.pdf" aria-label="Download resume PDF">
-            <span>Download CV</span>
-          </a>
+          <div class="flex items-center gap-2 ml-1">
+            <a href="https://github.com/Eraal" target="_blank" rel="noopener" class="social-icon" aria-label="GitHub profile">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            </a>
+            <a href="https://www.linkedin.com/in/gerald-pandaan-27b53b2a9/" target="_blank" rel="noopener" class="social-icon" aria-label="LinkedIn profile">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </a>
+          </div>
         </div>
       </div>
-      <div class="flex-1 max-w-md w-full">
-        <div class="relative card-surface p-6 md:p-8 text-center">
-          <img src="assets/img/me_image.jfif" alt="Profile photo of Gerald Pandaan" class="w-36 h-36 mx-auto mb-6 rounded-full object-cover shadow-surface" />
-          <p class="text-base-muted mb-4">Focused on front-end development, problem solving, and continuous learning. I enjoy translating ideas into elegant, maintainable, and accessible interfaces.</p>
+
+      <!-- Right: Profile Card -->
+      <div class="flex-1 max-w-md w-full reveal reveal-delay-2">
+        <div class="card-surface p-6 md:p-8 text-center">
+          <img src="assets/img/me_image.jfif" alt="Profile photo of Gerald Pandaan" class="w-36 h-36 mx-auto mb-5 rounded-full object-cover ring-4 ring-accent/20 shadow-lg" />
+          <h2 class="font-display text-lg font-semibold text-white mb-1">Gerald Naz Pandaan</h2>
+          <p class="text-sm text-text-muted mb-4">BS Information Technology, Cum Laude</p>
+          <p class="text-sm text-text-secondary mb-5 leading-relaxed">Focused on building maintainable, production-ready web systems. Experienced in full-stack development, server administration, and AI-assisted workflows.</p>
           <div class="flex flex-wrap gap-2 justify-center">
-            <span class="badge-skill">HTML</span>
-            <span class="badge-skill">CSS</span>
-            <span class="badge-skill">JavaScript</span>
+            <span class="badge-skill">TypeScript</span>
             <span class="badge-skill">Python</span>
+            <span class="badge-skill">Flask</span>
+            <span class="badge-skill">React</span>
+            <span class="badge-skill">PostgreSQL</span>
+            <span class="badge-skill">MongoDB</span>
+            <span class="badge-skill">DigitalOcean</span>
             <span class="badge-skill">Git</span>
           </div>
         </div>
@@ -104,39 +147,54 @@
     </div>
   </header>
 
-  <!-- About -->
+  <hr class="section-divider" />
+
+  <!-- ========== ABOUT ========== -->
   <section id="about" class="py-20">
-    <div class="max-w-5xl mx-auto px-4">
-      <header class="section-heading">
-        <h2 class="font-display text-3xl font-bold">About</h2>
+    <div class="max-w-6xl mx-auto px-4">
+      <header class="section-heading reveal">
+        <h2 class="font-display text-3xl font-bold text-white">About Me</h2>
       </header>
       <div class="grid md:grid-cols-3 gap-10">
-        <div class="md:col-span-2 prose-light space-y-5">
-          <p><strong class="text-accent">Gerald Pandaan</strong> is a dedicated Computer Studies student with a growing focus on software development, user-centered design, and problem solving. He values clarity, maintainability, and performance in code.</p>
-          <p>He explores modern web technologies, collaborates on academic and personal projects, and continuously refines his technical and analytical skills.</p>
-          <p>Outside academics, he invests time in learning new frameworks, contributing to code repositories, and studying clean architecture patterns.</p>
+        <div class="md:col-span-2 prose-dark space-y-5 reveal">
+          <p>I'm a <strong class="text-accent-soft">Cum Laude graduate</strong> in BS Information Technology from Laguna State Polytechnic University, specializing in Network Administration. What sets me apart from most fresh graduates is that I've already shipped <strong class="text-white">two production systems</strong> used by real organizations.</p>
+          <p>During my OJT at the Municipality of Siniloan's SICTO office, I designed, built, and deployed a <strong class="text-white">digital governance platform</strong> that handles HR management, travel order processing, and administrative operations, and it's live at <a href="https://siniloandgp.com" target="_blank" rel="noopener" class="text-accent hover:underline">siniloandgp.com</a> today.</p>
+          <p>For my capstone, I led the development of <strong class="text-white">PiyuGuide</strong>, a cross-platform inquiry and counseling system serving multiple campuses with real-time WebSocket communication and WebRTC video sessions, live at <a href="https://piyuguide.live" target="_blank" rel="noopener" class="text-accent hover:underline">piyuguide.live</a>.</p>
+          <p>I'm proficient in AI-assisted development using <strong class="text-white">GitHub Copilot and Claude AI</strong> to accelerate development, debugging, and documentation. I'm a CHED Tulong Dunong Program scholarship recipient and I'm actively seeking entry-level IT or software development roles.</p>
         </div>
         <div class="space-y-4">
-          <div class="card-surface p-5">
-            <h3 class="font-semibold mb-3 text-sm tracking-wide uppercase text-accent">Core Skills</h3>
+          <div class="card-surface p-5 reveal reveal-delay-1">
+            <h3 class="font-semibold mb-3 text-xs tracking-widest uppercase text-accent">Development</h3>
             <div class="flex flex-wrap gap-2">
-              <span class="badge-skill">HTML5</span>
-              <span class="badge-skill">CSS3</span>
-              <span class="badge-skill">Tailwind</span>
               <span class="badge-skill">JavaScript</span>
+              <span class="badge-skill">TypeScript</span>
               <span class="badge-skill">Python</span>
-              <span class="badge-skill">Git & GitHub</span>
-              <span class="badge-skill">Responsive Design</span>
-              <span class="badge-skill">Accessibility</span>
+              <span class="badge-skill">Java</span>
+              <span class="badge-skill">React</span>
+              <span class="badge-skill">Flask</span>
+              <span class="badge-skill">Tailwind CSS</span>
+              <span class="badge-skill">HTML5/CSS3</span>
             </div>
           </div>
-          <div class="card-surface p-5">
-            <h3 class="font-semibold mb-3 text-sm tracking-wide uppercase text-accent">Learning</h3>
+          <div class="card-surface p-5 reveal reveal-delay-2">
+            <h3 class="font-semibold mb-3 text-xs tracking-widest uppercase text-accent">Databases & DevOps</h3>
             <div class="flex flex-wrap gap-2">
-              <span class="badge-skill">React</span>
-              <span class="badge-skill">Node.js</span>
-              <span class="badge-skill">APIs</span>
-              <span class="badge-skill">Database Basics</span>
+              <span class="badge-skill">PostgreSQL</span>
+              <span class="badge-skill">MongoDB</span>
+              <span class="badge-skill">DigitalOcean</span>
+              <span class="badge-skill">AWS</span>
+              <span class="badge-skill">Hostinger VPS</span>
+              <span class="badge-skill">Linux (Ubuntu)</span>
+            </div>
+          </div>
+          <div class="card-surface p-5 reveal reveal-delay-3">
+            <h3 class="font-semibold mb-3 text-xs tracking-widest uppercase text-accent">Systems & Tools</h3>
+            <div class="flex flex-wrap gap-2">
+              <span class="badge-skill">Git / GitHub</span>
+              <span class="badge-skill">Active Directory</span>
+              <span class="badge-skill">Cisco</span>
+              <span class="badge-skill">GitHub Copilot</span>
+              <span class="badge-skill">Claude AI</span>
             </div>
           </div>
         </div>
@@ -144,143 +202,328 @@
     </div>
   </section>
 
-  <!-- CV / Resume -->
-  <section id="cv" class="py-20 bg-white">
+  <hr class="section-divider" />
+
+  <!-- ========== EXPERIENCE TIMELINE ========== -->
+  <section id="experience" class="py-20">
     <div class="max-w-5xl mx-auto px-4">
-      <header class="section-heading flex items-center justify-between">
-        <h2 class="font-display text-3xl font-bold">Curriculum Vitae</h2>
-        <button onclick="window.print()" class="no-print text-xs bg-accent text-white px-3 py-2 rounded-md hover:bg-accent-soft transition print-resume-btn" aria-label="Print resume">Print</button>
+      <header class="section-heading reveal">
+        <h2 class="font-display text-3xl font-bold text-white">Experience & Education</h2>
       </header>
-      <div class="space-y-4">
+      <div class="timeline">
+        <!-- Entry 1 -->
+        <div class="timeline-item active reveal">
+          <div class="flex flex-col sm:flex-row sm:items-start gap-2 mb-1">
+            <span class="text-xs font-semibold text-accent tracking-wider uppercase whitespace-nowrap">Jun 2026</span>
+          </div>
+          <h3 class="font-display text-lg font-semibold text-white">BS Information Technology (Major in Network Administration)</h3>
+          <p class="text-sm text-text-secondary mb-1">Laguna State Polytechnic University, Siniloan Campus</p>
+          <div class="flex flex-wrap gap-2 mt-2">
+            <span class="badge-role">🎓 Cum Laude</span>
+            <span class="badge-skill">CHED TDP Scholar</span>
+          </div>
+        </div>
+
+        <!-- Entry 2 -->
+        <div class="timeline-item reveal reveal-delay-1">
+          <div class="flex flex-col sm:flex-row sm:items-start gap-2 mb-1">
+            <span class="text-xs font-semibold text-accent tracking-wider uppercase whitespace-nowrap">Mar to Jun 2026</span>
+          </div>
+          <h3 class="font-display text-lg font-semibold text-white">IT Intern / Web Systems Developer</h3>
+          <p class="text-sm text-text-secondary mb-1">Municipality of Siniloan, Laguna (SICTO)</p>
+          <p class="text-sm text-text-muted mt-2 leading-relaxed">Designed and deployed a production-grade municipal digital governance platform. Collaborated directly with SICTO personnel for requirements gathering, iterative testing, and go-live. Administered the web server on Hostinger VPS and managed MongoDB backups.</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="badge-skill">TypeScript</span>
+            <span class="badge-skill">MongoDB</span>
+            <span class="badge-skill">VPS Admin</span>
+          </div>
+        </div>
+
+        <!-- Entry 3 -->
+        <div class="timeline-item reveal reveal-delay-2">
+          <div class="flex flex-col sm:flex-row sm:items-start gap-2 mb-1">
+            <span class="text-xs font-semibold text-accent tracking-wider uppercase whitespace-nowrap">2025 to 2026</span>
+          </div>
+          <h3 class="font-display text-lg font-semibold text-white">Lead Developer for PiyuGuide (Capstone Project)</h3>
+          <p class="text-sm text-text-secondary mb-1">Laguna State Polytechnic University</p>
+          <p class="text-sm text-text-muted mt-2 leading-relaxed">Led development of a cross-platform Inquiry & Counseling System serving multiple campuses. Built multi-office support, real-time WebSocket communication, and WebRTC video counseling.</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="badge-skill">Python/Flask</span>
+            <span class="badge-skill">WebSocket</span>
+            <span class="badge-skill">WebRTC</span>
+            <span class="badge-skill">PostgreSQL</span>
+          </div>
+        </div>
+
+        <!-- Entry 4 -->
+        <div class="timeline-item reveal reveal-delay-3">
+          <div class="flex flex-col sm:flex-row sm:items-start gap-2 mb-1">
+            <span class="text-xs font-semibold text-accent tracking-wider uppercase whitespace-nowrap">2024 to 2025</span>
+          </div>
+          <h3 class="font-display text-lg font-semibold text-white">Developer for TagTrack RFID Lost & Found System</h3>
+          <p class="text-sm text-text-secondary mb-1">Laguna State Polytechnic University</p>
+          <p class="text-sm text-text-muted mt-2 leading-relaxed">Built a university-wide Lost & Found tracking system with RFID technology, automating item tagging, scanning, status updates, and a secure claim verification workflow.</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="badge-skill">React</span>
+            <span class="badge-skill">Vite</span>
+            <span class="badge-skill">RFID</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider" />
+
+  <!-- ========== PROJECTS ========== -->
+  <section id="projects" class="py-20">
+    <div class="max-w-7xl mx-auto px-4">
+      <header class="section-heading flex items-center justify-between reveal">
+        <h2 class="font-display text-3xl font-bold text-white">Featured Projects</h2>
+        <a href="https://github.com/Eraal" target="_blank" rel="noopener" class="text-sm text-accent hover:underline flex items-center gap-1" aria-label="View all projects on GitHub">
+          View All on GitHub
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+        </a>
+      </header>
+
+      <div class="grid md:grid-cols-2 gap-8 stagger-children">
+
+        <!-- === PROJECT 1: PiyuGuide === -->
+        <article class="project-card reveal" aria-label="Project: PiyuGuide">
+          <div class="project-card-img-wrapper">
+            <img src="Projects/PiyuGuide/SuperadminPortal.jpg" alt="PiyuGuide Super Admin Dashboard showing campus management, inquiry tracking, and counseling sessions" class="project-card-img" loading="lazy" />
+          </div>
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-3 flex-wrap">
+              <h3 class="font-display text-xl font-bold text-white">PiyuGuide</h3>
+              <span class="badge-role">Lead Developer</span>
+              <span class="badge-live">Live</span>
+            </div>
+            <p class="text-xs text-text-muted uppercase tracking-wider font-medium mb-3">Capstone Project · Laguna State Polytechnic University</p>
+            <p class="text-sm text-text-secondary leading-relaxed mb-4">A cross-platform Inquiry & Counseling System serving multiple campuses of a State University. Replaced fragmented manual coordination with a centralized digital platform featuring real-time communication and video counseling.</p>
+
+            <!-- Tech Stack -->
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="badge-skill">Python</span>
+              <span class="badge-skill">Flask</span>
+              <span class="badge-skill">WebSocket</span>
+              <span class="badge-skill">WebRTC</span>
+              <span class="badge-skill">PostgreSQL</span>
+              <span class="badge-skill">DigitalOcean</span>
+            </div>
+
+            <!-- Links -->
+            <div class="flex gap-3 mt-5 pt-4 border-t border-white/5">
+              <a href="https://piyuguide.live" target="_blank" rel="noopener" class="btn-primary text-xs py-2 px-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                Visit Live Site
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <!-- === PROJECT 2: Siniloan DGP === -->
+        <article class="project-card reveal" aria-label="Project: Siniloan Digital Governance Platform">
+          <div class="project-card-img-wrapper">
+            <img src="Projects/SiniloanDGP/SuperAdminDashboard.jpg" alt="Siniloan Digital Governance Platform dashboard showing HR modules, travel orders, and system overview" class="project-card-img" loading="lazy" />
+          </div>
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-3 flex-wrap">
+              <h3 class="font-display text-xl font-bold text-white">Siniloan Digital Governance</h3>
+              <span class="badge-role">Solo Developer</span>
+              <span class="badge-live">Production</span>
+            </div>
+            <p class="text-xs text-text-muted uppercase tracking-wider font-medium mb-3">OJT Internship · Municipality of Siniloan, Laguna — SICTO</p>
+            <p class="text-sm text-text-secondary leading-relaxed mb-4">A production-grade municipal digital governance platform actively used by the Municipality of Siniloan for daily government HR, travel order processing, and administrative operations.</p>
+
+            <!-- Tech Stack -->
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="badge-skill">TypeScript</span>
+              <span class="badge-skill">Vanilla SPA</span>
+              <span class="badge-skill">MongoDB</span>
+              <span class="badge-skill">Hostinger VPS</span>
+              <span class="badge-skill">REST API</span>
+            </div>
+
+            <!-- Links -->
+            <div class="flex gap-3 mt-5 pt-4 border-t border-white/5">
+              <a href="https://siniloandgp.com" target="_blank" rel="noopener" class="btn-primary text-xs py-2 px-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                Visit Live Site
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <!-- === PROJECT 3: TagTrack === -->
+        <article class="project-card reveal" aria-label="Project: TagTrack RFID Lost and Found">
+          <div class="project-card-img-wrapper">
+            <img src="Projects/Lost&Found/Dashboard.jpg" alt="TagTrack Lost and Found system showing item reporting, search, and claim tracking" class="project-card-img" loading="lazy" />
+          </div>
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-3 flex-wrap">
+              <h3 class="font-display text-xl font-bold text-white">TagTrack RFID Lost & Found</h3>
+              <span class="badge-role">Developer</span>
+            </div>
+            <p class="text-xs text-text-muted uppercase tracking-wider font-medium mb-3">Final Project · Laguna State Polytechnic University</p>
+            <p class="text-sm text-text-secondary leading-relaxed mb-4">A university-wide Lost and Found tracking system integrated with RFID technology. Automates item tagging, scanning, status updates, and secure claim verification across campus facilities.</p>
+
+            <!-- Tech Stack -->
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="badge-skill">React</span>
+              <span class="badge-skill">Vite</span>
+              <span class="badge-skill">RFID Integration</span>
+              <span class="badge-skill">REST API</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- === PROJECT 4: PiyuClean === -->
+        <article class="project-card reveal" aria-label="Project: PiyuClean Cleaning Management System">
+          <div class="project-card-img-wrapper">
+            <img src="Projects/PiyuClean/admindashboard.jpg" alt="PiyuClean admin dashboard showing task assignments, completion tracking, and classroom management" class="project-card-img" loading="lazy" />
+          </div>
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-3 flex-wrap">
+              <h3 class="font-display text-xl font-bold text-white">PiyuClean</h3>
+              <span class="badge-role">Developer</span>
+            </div>
+            <p class="text-xs text-text-muted uppercase tracking-wider font-medium mb-3">Academic Project · Laguna State Polytechnic University</p>
+            <p class="text-sm text-text-secondary leading-relaxed mb-4">A classroom cleaning management system that automates weekly task assignments, tracks completion, and generates reports, replacing manual coordination between administrators and students.</p>
+
+            <!-- Tech Stack -->
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <span class="badge-skill">Java</span>
+              <span class="badge-skill">Spring Boot</span>
+              <span class="badge-skill">Web Application</span>
+              <span class="badge-skill">REST API</span>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider" />
+
+  <!-- ========== CV / RESUME ========== -->
+  <section id="cv" class="py-20">
+    <div class="max-w-5xl mx-auto px-4">
+      <header class="section-heading flex items-center justify-between reveal">
+        <h2 class="font-display text-3xl font-bold text-white">Resume</h2>
+      </header>
+      <div class="space-y-4 reveal">
         <div class="flex flex-wrap gap-3 no-print">
-          <a href="assets/cv/GERALD%20PANDAAN.pdf" target="_blank" rel="noopener" class="btn-elevate inline-flex items-center gap-2 px-4 py-2 rounded-md border border-accent text-accent font-medium hover:shadow-surfaceHover transition" aria-label="Open CV in a new tab">Open CV in new tab</a>
-          <a href="assets/cv/GERALD%20PANDAAN.pdf" download="Gerald-Pandaan-CV.pdf" class="btn-elevate inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent text-white font-medium hover:bg-accent-soft transition" aria-label="Download CV PDF">Download CV</a>
+          <a href="assets/cv/resume.pdf" target="_blank" rel="noopener" class="btn-secondary text-sm" aria-label="Open resume in a new tab">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            Open in New Tab
+          </a>
+          <a href="assets/cv/resume.pdf" download="Gerald-Pandaan-Resume.pdf" class="btn-primary text-sm" aria-label="Download resume PDF">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Download Resume
+          </a>
         </div>
         <div class="card-surface p-2">
-          <object data="assets/cv/GERALD%20PANDAAN.pdf" type="application/pdf" width="100%" style="height: 80vh;">
-            <p class="p-4 text-sm">Your browser can't display PDFs. You can <a href="assets/cv/GERALD%20PANDAAN.pdf" target="_blank" rel="noopener" class="text-accent underline">open the CV in a new tab</a> or <a href="assets/cv/GERALD%20PANDAAN.pdf" download="Gerald-Pandaan-CV.pdf" class="text-accent underline">download it</a>.</p>
+          <object data="assets/cv/resume.pdf" type="application/pdf" width="100%" style="height: 80vh; border-radius: 12px;">
+            <p class="p-4 text-sm text-text-secondary">Your browser can't display PDFs. You can <a href="assets/cv/resume.pdf" target="_blank" rel="noopener" class="text-accent underline">open the resume in a new tab</a> or <a href="assets/cv/resume.pdf" download="Gerald-Pandaan-Resume.pdf" class="text-accent underline">download it</a>.</p>
           </object>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Certifications -->
+  <hr class="section-divider" />
+
+  <!-- ========== CERTIFICATIONS ========== -->
   <section id="certifications" class="py-20">
     <div class="max-w-6xl mx-auto px-4">
-      <header class="section-heading">
-        <h2 class="font-display text-3xl font-bold">Certifications</h2>
+      <header class="section-heading reveal">
+        <h2 class="font-display text-3xl font-bold text-white">Certifications</h2>
       </header>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Certification Card -->
-        <article class="card-surface p-6 flex flex-col" tabindex="0" aria-label="Certification: Web Development Basics">
-          <h3 class="font-semibold mb-2">Web Development Basics</h3>
-          <p class="text-sm text-base-muted flex-grow">Completed foundational training covering HTML, CSS, and JavaScript essentials.</p>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+        <article class="card-surface p-6 flex flex-col reveal" tabindex="0" aria-label="Certification: Web Development Basics">
+          <h3 class="font-semibold mb-2 text-white">Web Development Basics</h3>
+          <p class="text-sm text-text-secondary flex-grow">Completed foundational training covering HTML, CSS, and JavaScript essentials.</p>
           <a href="#" class="mt-4 inline-flex items-center text-sm text-accent hover:underline" aria-label="View details for Web Development Basics">View Details →</a>
         </article>
-        <article class="card-surface p-6 flex flex-col" tabindex="0" aria-label="Certification: Python Programming">
-          <h3 class="font-semibold mb-2">Python Programming</h3>
-            <p class="text-sm text-base-muted flex-grow">Introductory certificate demonstrating understanding of Python fundamentals.</p>
-            <a href="#" class="mt-4 inline-flex items-center text-sm text-accent hover:underline" aria-label="View details for Python Programming">View Details →</a>
+        <article class="card-surface p-6 flex flex-col reveal" tabindex="0" aria-label="Certification: Python Programming">
+          <h3 class="font-semibold mb-2 text-white">Python Programming</h3>
+          <p class="text-sm text-text-secondary flex-grow">Introductory certificate demonstrating understanding of Python fundamentals.</p>
+          <a href="#" class="mt-4 inline-flex items-center text-sm text-accent hover:underline" aria-label="View details for Python Programming">View Details →</a>
         </article>
-        <article class="card-surface p-6 flex flex-col" tabindex="0" aria-label="Certification: Version Control with Git">
-          <h3 class="font-semibold mb-2">Version Control with Git</h3>
-            <p class="text-sm text-base-muted flex-grow">Covers branching strategies, commits, pull requests, and collaboration.</p>
-            <a href="#" class="mt-4 inline-flex items-center text-sm text-accent hover:underline" aria-label="View details for Version Control with Git">View Details →</a>
+        <article class="card-surface p-6 flex flex-col reveal" tabindex="0" aria-label="Certification: Version Control with Git">
+          <h3 class="font-semibold mb-2 text-white">Version Control with Git</h3>
+          <p class="text-sm text-text-secondary flex-grow">Covers branching strategies, commits, pull requests, and collaboration.</p>
+          <a href="#" class="mt-4 inline-flex items-center text-sm text-accent hover:underline" aria-label="View details for Version Control with Git">View Details →</a>
         </article>
       </div>
     </div>
   </section>
 
-  <!-- Projects -->
-  <section id="projects" class="py-20 bg-white">
-    <div class="max-w-6xl mx-auto px-4">
-      <header class="section-heading flex items-center justify-between">
-        <h2 class="font-display text-3xl font-bold">Projects</h2>
-        <a href="https://github.com/username" target="_blank" rel="noopener" class="text-sm text-accent hover:underline" aria-label="View more projects on GitHub">View All →</a>
-      </header>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Project Card -->
-        <!-- <article class="card-surface p-6 flex flex-col" aria-label="Project: Portfolio Website">
-          <h3 class="font-semibold mb-2">Portfolio Website</h3>
-          <p class="text-sm text-base-muted flex-grow">A responsive personal portfolio built using HTML, CSS (Tailwind), and accessible UI patterns.</p>
-          <div class="flex flex-wrap gap-2 mt-4 text-xs">
-            <span class="badge-skill">HTML</span>
-            <span class="badge-skill">Tailwind</span>
-            <span class="badge-skill">Accessibility</span>
-          </div>
-          <div class="mt-4 flex gap-4 text-sm">
-            <a href="#" class="text-accent hover:underline" aria-label="View live demo of Portfolio Website">Demo</a>
-            <a href="#" class="text-accent hover:underline" aria-label="View repository of Portfolio Website">Code</a>
-          </div>
-        </article> -->
-        <!-- <article class="card-surface p-6 flex flex-col" aria-label="Project: Study Planner App">
-          <h3 class="font-semibold mb-2">Study Planner App</h3>
-          <p class="text-sm text-base-muted flex-grow">A simple planner for organizing study tasks and tracking progress.</p>
-          <div class="flex flex-wrap gap-2 mt-4 text-xs">
-            <span class="badge-skill">JavaScript</span>
-            <span class="badge-skill">LocalStorage</span>
-            <span class="badge-skill">UI/UX</span>
-          </div>
-          <div class="mt-4 flex gap-4 text-sm">
-            <a href="#" class="text-accent hover:underline" aria-label="View live demo of Study Planner App">Demo</a>
-            <a href="#" class="text-accent hover:underline" aria-label="View repository of Study Planner App">Code</a>
-          </div>
-        </article> -->
-        <!-- <article class="card-surface p-6 flex flex-col" aria-label="Project: Algorithm Practice Repo">
-          <h3 class="font-semibold mb-2">Algorithm Practice Repo</h3>
-          <p class="text-sm text-base-muted flex-grow">Collection of solved algorithm problems with clean, documented solutions.</p>
-          <div class="flex flex-wrap gap-2 mt-4 text-xs">
-            <span class="badge-skill">Python</span>
-            <span class="badge-skill">Problem Solving</span>
-            <span class="badge-skill">Git</span>
-          </div>
-          <div class="mt-4 flex gap-4 text-sm">
-            <a href="#" class="text-accent hover:underline" aria-label="View live demo of Algorithm Practice Repo">Demo</a>
-            <a href="#" class="text-accent hover:underline" aria-label="View repository of Algorithm Practice Repo">Code</a>
-          </div>
-        </article> -->
-      </div>
-    </div>
-  </section>
+  <hr class="section-divider" />
 
-  <!-- Contact -->
+  <!-- ========== CONTACT ========== -->
   <section id="contact" class="py-20">
-    <div class="max-w-4xl mx-auto px-4">
-      <header class="section-heading">
-        <h2 class="font-display text-3xl font-bold">Contact</h2>
+    <div class="max-w-2xl mx-auto px-4">
+      <header class="section-heading reveal">
+        <h2 class="font-display text-3xl font-bold text-white">Reach Out</h2>
       </header>
-      <div class="grid md:grid-cols-2 gap-12">
-        <form id="contactForm" class="space-y-5 card-surface p-6" novalidate aria-label="Contact form">
-          <div>
-            <label for="name" class="block text-sm font-medium mb-1">Name</label>
-            <input id="name" name="name" type="text" required class="w-full rounded-md border border-base-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Your name" />
+      <div class="card-surface p-8 reveal">
+        <p class="text-text-secondary leading-relaxed mb-8 text-center">I'm actively seeking <strong class="text-white">entry-level IT, software development, or systems administration roles</strong>. If you're looking for a developer who's already shipped production systems, let's connect.</p>
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div class="flex items-center gap-3">
+            <div class="social-icon shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            </div>
+            <div>
+              <p class="text-xs text-text-muted uppercase tracking-wider font-medium">Email</p>
+              <a href="mailto:geraldnazpandaan1@gmail.com" class="text-sm text-text-secondary hover:text-accent transition">geraldnazpandaan1@gmail.com</a>
+            </div>
           </div>
-          <div>
-            <label for="email" class="block text-sm font-medium mb-1">Email</label>
-            <input id="email" name="email" type="email" required class="w-full rounded-md border border-base-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="you@example.com" />
+          <div class="flex items-center gap-3">
+            <div class="social-icon shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            </div>
+            <div>
+              <p class="text-xs text-text-muted uppercase tracking-wider font-medium">Phone</p>
+              <a href="tel:+639703373083" class="text-sm text-text-secondary hover:text-accent transition">+63 970 337 3083</a>
+            </div>
           </div>
-          <div>
-            <label for="message" class="block text-sm font-medium mb-1">Message</label>
-            <textarea id="message" name="message" rows="5" required class="w-full rounded-md border border-base-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="How can I help?"></textarea>
+          <div class="flex items-center gap-3">
+            <a href="https://github.com/Eraal" target="_blank" rel="noopener" class="social-icon shrink-0" aria-label="GitHub">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            </a>
+            <div>
+              <p class="text-xs text-text-muted uppercase tracking-wider font-medium">GitHub</p>
+              <a href="https://github.com/Eraal" target="_blank" rel="noopener" class="text-sm text-text-secondary hover:text-accent transition">github.com/Eraal</a>
+            </div>
           </div>
-          <button type="submit" class="btn-elevate w-full bg-accent text-white py-3 rounded-md font-medium hover:bg-accent-soft transition" aria-label="Send message">Send Message</button>
-          <p class="text-xs text-base-muted">This form currently provides a demo alert only. Integrate a backend or service for real submissions.</p>
-        </form>
-        <div class="space-y-6">
-          <p class="text-base-muted">Feel free to reach out for academic collaborations, project discussions, or internship opportunities. I'm always open to learning from others and contributing to meaningful work.</p>
-          <ul class="space-y-2 text-sm text-base-muted">
-            <li><strong class="text-accent">Email:</strong> <a href="mailto:geraldnazpandaan1@gmail.com" class="hover:underline">geraldnazpandaan1@gmail.com</a></li>
-            <li><strong class="text-accent">GitHub:</strong> <a href="https://github.com/Eraal" target="_blank" rel="noopener" class="hover:underline">https://github.com/Eraal</a></li>
-            <li><strong class="text-accent">LinkedIn:</strong> <a href="https://www.linkedin.com/in/gerald-pandaan-27b53b2a9/" target="_blank" rel="noopener" class="hover:underline">https://www.linkedin.com/in/gerald-pandaan-27b53b2a9/</a></li>
-          </ul>
+          <div class="flex items-center gap-3">
+            <a href="https://www.linkedin.com/in/gerald-pandaan-27b53b2a9/" target="_blank" rel="noopener" class="social-icon shrink-0" aria-label="LinkedIn">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </a>
+            <div>
+              <p class="text-xs text-text-muted uppercase tracking-wider font-medium">LinkedIn</p>
+              <a href="https://www.linkedin.com/in/gerald-pandaan-27b53b2a9/" target="_blank" rel="noopener" class="text-sm text-text-secondary hover:text-accent transition">Gerald Pandaan</a>
+            </div>
+          </div>
         </div>
+        <p class="text-xs text-text-muted text-center mt-6 pt-4 border-t border-white/5">📍 Kalayaan, Laguna, Philippines</p>
       </div>
     </div>
   </section>
 
-  <footer class="py-8 border-t border-base-border text-center text-sm text-base-muted">
-    <p>&copy; <span id="year"></span> Gerald Pandaan. All rights reserved.</p>
+  <!-- ========== FOOTER ========== -->
+  <footer class="py-8 border-t border-white/5 text-center">
+    <p class="text-sm text-text-muted">&copy; <span id="year"></span> Gerald Pandaan. All rights reserved.</p>
+    <div class="flex justify-center gap-4 mt-3">
+      <a href="https://github.com/Eraal" target="_blank" rel="noopener" class="text-text-muted hover:text-accent transition text-xs">GitHub</a>
+      <span class="text-text-muted/30">·</span>
+      <a href="https://www.linkedin.com/in/gerald-pandaan-27b53b2a9/" target="_blank" rel="noopener" class="text-text-muted hover:text-accent transition text-xs">LinkedIn</a>
+      <span class="text-text-muted/30">·</span>
+      <a href="mailto:geraldnazpandaan1@gmail.com" class="text-text-muted hover:text-accent transition text-xs">Email</a>
+    </div>
   </footer>
 
   <script src="assets/js/main.js" defer></script>
