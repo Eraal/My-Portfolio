@@ -972,3 +972,180 @@ header#hero {
   .atom-guide-orbit { inset: 6px 0; }
   .atom-guide-caption { display: none; }
 }
+
+/* =============================================
+   ATOM SPEECH BUBBLE (Glass Guide Narrative)
+   ============================================= */
+.atom-speech-bubble {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 45;
+  opacity: 0;
+  will-change: transform, opacity;
+  transition: opacity 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.atom-speech-bubble.active {
+  opacity: 1;
+}
+
+.atom-speech-bubble.fading {
+  opacity: 0 !important;
+  transition: opacity 260ms ease !important;
+}
+
+.atom-bubble-body {
+  position: relative;
+  max-width: 240px;
+  padding: 10px 14px;
+  background: rgba(10, 15, 26, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(56, 189, 248, 0.2);
+  color: #f1f5f9;
+  transform: scale(0.82);
+  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.atom-speech-bubble.active .atom-bubble-body {
+  transform: scale(1);
+}
+
+.atom-speech-bubble.fading .atom-bubble-body {
+  transform: scale(0.9);
+}
+
+/* Bubble Tail */
+.atom-bubble-tail {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(10, 15, 26, 0.94);
+  top: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.atom-bubble-tail.tail-left {
+  left: -5px;
+  transform: translateY(-50%) rotate(45deg);
+  border-left: 1px solid rgba(56, 189, 248, 0.35);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.atom-bubble-tail.tail-right {
+  right: -5px;
+  transform: translateY(-50%) rotate(45deg);
+  border-right: 1px solid rgba(56, 189, 248, 0.35);
+  border-top: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+/* Header Mono Label */
+.atom-bubble-label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #38bdf8;
+  margin-bottom: 4px;
+}
+
+/* Content & Typing Message */
+.atom-bubble-content {
+  position: relative;
+  min-height: 18px;
+}
+
+.atom-bubble-message {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #f1f5f9;
+  display: inline;
+}
+
+/* Blinking Cursor */
+.atom-bubble-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  background: #38bdf8;
+  margin-left: 2px;
+  vertical-align: -1px;
+  animation: bubbleCursorBlink 0.65s infinite;
+}
+
+@keyframes bubbleCursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Thinking Bouncing Dots */
+.atom-bubble-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.atom-bubble-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #38bdf8;
+  animation: bubbleDotBounce 0.6s infinite ease-in-out both;
+}
+
+.atom-bubble-dots span:nth-child(1) { animation-delay: -0.32s; }
+.atom-bubble-dots span:nth-child(2) { animation-delay: -0.16s; }
+.atom-bubble-dots span:nth-child(3) { animation-delay: 0s; }
+
+@keyframes bubbleDotBounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .atom-bubble-body {
+    max-width: 190px;
+    padding: 8px 11px;
+    border-radius: 12px;
+  }
+  .atom-bubble-label {
+    font-size: 8.5px;
+  }
+  .atom-bubble-message {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .atom-bubble-body {
+    transform: none !important;
+    transition: none !important;
+  }
+  .atom-speech-bubble {
+    transition: opacity 200ms ease !important;
+  }
+  .atom-bubble-dots span {
+    animation: none !important;
+  }
+  .atom-bubble-cursor {
+    animation: none !important;
+  }
+}
+

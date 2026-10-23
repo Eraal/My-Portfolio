@@ -883,6 +883,574 @@ import { attachAtomReactivity } from './atom-react.js';
 
     const speedBoost = reduceMotion ? 1 : 1 + Math.min(2.5, Math.abs(scrollVelocity) * 0.001);
     electrons.forEach((item) => updateElectron(item, reduceMotion ? 0 : dt, speedBoost));
+
+    if (!reduceMotion && updateTendrilVisuals) {
+      updateTendrilVisuals(motionTime, dt);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════
+     6. TENDRIL VISUAL RIBBON ENGINE
+     (Camera-facing tapered ribbons, glow, slack/tension, energy flow & grip effects)
+     ═══════════════════════════════════════════════ */
+  const MAX_VISUAL_TENDRILS = mobile ? 3 : 5;
+  const RIBBON_SEGMENTS = 24;
+  const RIBBON_VERTS = (RIBBON_SEGMENTS + 1) * 2; // 50 vertices
+  const RIBBON_INDICES = RIBBON_SEGMENTS * 6; // 144 indices
+
+  // Shared precomputed quad index buffer
+  const quadIndices = new Uint16Array(RIBBON_INDICES);
+  for (let s = 0; s < RIBBON_SEGMENTS; s++) {
+    const v0 = s * 2;
+    const v1 = s * 2 + 1;
+    const v2 = (s + 1) * 2;
+    const v3 = (s + 1) * 2 + 1;
+    quadIndices[s * 6]     = v0;
+    quadIndices[s * 6 + 1] = v1;
+    quadIndices[s * 6 + 2] = v2;
+    quadIndices[s * 6 + 3] = v1;
+    quadIndices[s * 6 + 4] = v3;
+    quadIndices[s * 6 + 5] = v2;
+  }
+
+  // Color palettes
+  // 3 in 4: Deep cyan #0ea5e9 -> bright cyan #38bdf8 -> light cyan-white #e0f7ff (never pure white)
+  const PALETTE_CYAN = {
+    base: new THREE.Color('#0ea5e9'),
+    mid: new THREE.Color('#38bdf8'),
+    tip: new THREE.Color('#e0f7ff'),
+  };
+  // 1 in 4 (tendril 2): Violet #6d28d9 -> #8b5cf6 -> #ede9fe
+  const PALETTE_VIOLET = {
+    base: new THREE.Color('#6d28d9'),
+    mid: new THREE.Color('#8b5cf6'),
+    tip: new THREE.Color('#ede9fe'),
+  };
+
+  const visualTendrils = [];
+  const interceptedRawTendrils = [];
+
+  // Crossing text readability: cache paragraph viewport rects (Requirement 6)
+  let cachedParagraphs = [];
+  function updateParagraphCache() {
+    const pEls = document.querySelectorAll('p');
+    cachedParagraphs = [];
+    pEls.forEach((p) => {
+      const r = p.getBoundingClientRect();
+      if (r.width > 20 && r.height > 10) {
+        cachedParagraphs.push({
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          bottom: r.bottom,
+          midX: (r.left + r.right) * 0.5,
+          midY: (r.top + r.bottom) * 0.5,
+        });
+      }
+    });
+  }
+  updateParagraphCache();
+  window.addEventListener('scroll', updateParagraphCache, { passive: true });
+  window.addEventListener('resize', updateParagraphCache, { passive: true });
+
+  for (let t = 0; t < MAX_VISUAL_TENDRILS; t++) {
+    const isViolet = (t === 2);
+    const palette = isViolet ? PALETTE_VIOLET : PALETTE_CYAN;
+
+    // 1. Core Ribbon Mesh (tapers ~5px to ~1px)
+    const coreGeo = new THREE.BufferGeometry();
+    const corePos = new Float32Array(RIBBON_VERTS * 3);
+    const coreCol = new Float32Array(RIBBON_VERTS * 3);
+    coreGeo.setAttribute('position', new THREE.BufferAttribute(corePos, 3));
+    coreGeo.setAttribute('color', new THREE.BufferAttribute(coreCol, 3));
+    coreGeo.setIndex(new THREE.BufferAttribute(quadIndices, 1));
+    coreGeo.setDrawRange(0, 0);
+
+    const coreMat = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    scene.add(coreMesh);
+
+    // 2. Soft Glow Ribbon (wider copy ~14px to ~2.8px, low opacity ~0.26)
+    const glowGeo = new THREE.BufferGeometry();
+    const glowPos = new Float32Array(RIBBON_VERTS * 3);
+    const glowCol = new Float32Array(RIBBON_VERTS * 3);
+    glowGeo.setAttribute('position', new THREE.BufferAttribute(glowPos, 3));
+    glowGeo.setAttribute('color', new THREE.BufferAttribute(glowCol, 3));
+    glowGeo.setIndex(new THREE.BufferAttribute(quadIndices, 1));
+    glowGeo.setDrawRange(0, 0);
+
+    const glowMat = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+    scene.add(glowMesh);
+
+    // 3. Energy Flow Pulses (3 bright packets along ribbon)
+    const pulseCount = 3;
+    const pulseGeo = new THREE.BufferGeometry();
+    const pulsePos = new Float32Array(pulseCount * 3);
+    const pulseCol = new Float32Array(pulseCount * 3);
+    pulseGeo.setAttribute('position', new THREE.BufferAttribute(pulsePos, 3));
+    pulseGeo.setAttribute('color', new THREE.BufferAttribute(pulseCol, 3));
+    const pulseMat = new THREE.PointsMaterial({
+      size: 9.0,
+      map: sprite,
+      transparent: true,
+      vertexColors: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: false,
+    });
+    const pulsePoints = new THREE.Points(pulseGeo, pulseMat);
+    scene.add(pulsePoints);
+
+    // 4. Fine Drifting Particles (4 particles drifting off line)
+    const driftCount = 4;
+    const driftGeo = new THREE.BufferGeometry();
+    const driftPos = new Float32Array(driftCount * 3);
+    const driftCol = new Float32Array(driftCount * 3);
+    driftGeo.setAttribute('position', new THREE.BufferAttribute(driftPos, 3));
+    driftGeo.setAttribute('color', new THREE.BufferAttribute(driftCol, 3));
+    const driftMat = new THREE.PointsMaterial({
+      size: 3.5,
+      map: sprite,
+      transparent: true,
+      vertexColors: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: false,
+    });
+    const driftPoints = new THREE.Points(driftGeo, driftMat);
+    scene.add(driftPoints);
+
+    // 5. Grip Effect: Expanding and fading contact ring
+    const gripRing = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: sprite,
+      color: isViolet ? 0x8b5cf6 : 0x38bdf8,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }));
+    gripRing.scale.set(16, 16, 1);
+    scene.add(gripRing);
+
+    // 6. Grip Effect: 8 tiny spark particles bursting outward
+    const sparkCount = 8;
+    const sparkGeo = new THREE.BufferGeometry();
+    const sparkPos = new Float32Array(sparkCount * 3);
+    const sparkCol = new Float32Array(sparkCount * 3);
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+    sparkGeo.setAttribute('color', new THREE.BufferAttribute(sparkCol, 3));
+    const sparkMat = new THREE.PointsMaterial({
+      size: 4.0,
+      map: sprite,
+      transparent: true,
+      vertexColors: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: false,
+    });
+    const sparkPoints = new THREE.Points(sparkGeo, sparkMat);
+    scene.add(sparkPoints);
+
+    // 7. Grip Effect: 3 short fine filaments (3 to 6px) spreading like roots
+    const filamentGeo = new THREE.BufferGeometry();
+    const filamentPos = new Float32Array(6 * 3);
+    const filamentCol = new Float32Array(6 * 3);
+    filamentGeo.setAttribute('position', new THREE.BufferAttribute(filamentPos, 3));
+    filamentGeo.setAttribute('color', new THREE.BufferAttribute(filamentCol, 3));
+    const filamentMat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      linewidth: 1.5,
+    });
+    const filamentLines = new THREE.LineSegments(filamentGeo, filamentMat);
+    scene.add(filamentLines);
+
+    visualTendrils.push({
+      id: t,
+      palette,
+      isViolet,
+      coreMesh, coreGeo, corePos, coreCol, coreMat,
+      glowMesh, glowGeo, glowPos, glowCol, glowMat,
+      pulsePoints, pulseGeo, pulsePos, pulseCol, pulseMat,
+      driftPoints, driftGeo, driftPos, driftCol, driftMat,
+      gripRing,
+      sparkPoints, sparkGeo, sparkPos, sparkCol, sparkMat,
+      filamentLines, filamentGeo, filamentPos, filamentCol, filamentMat,
+      curvePoints: new Array(RIBBON_SEGMENTS + 1).fill(0).map(() => new THREE.Vector3()),
+      gripWeight: 0,
+      prevRawOpacity: 0,
+      releaseSpring: 0,
+    });
+  }
+
+  // Intercept scene.add in attachAtomReactivity to hide 1px placeholder lines & capture tendril data
+  const sceneProxy = Object.create(scene);
+  sceneProxy.add = function (...objects) {
+    for (const obj of objects) {
+      if (obj.isLine && obj.geometry && obj.geometry.attributes && obj.geometry.attributes.position && obj.geometry.attributes.position.count === 32) {
+        obj.visible = false;
+        interceptedRawTendrils.push({ line: obj });
+      } else if (obj.isPoints && obj.geometry && obj.geometry.attributes && obj.geometry.attributes.position && obj.geometry.attributes.position.count === 3) {
+        obj.visible = false;
+        if (interceptedRawTendrils.length > 0) {
+          interceptedRawTendrils[interceptedRawTendrils.length - 1].flow = obj;
+        }
+      } else if (obj.isSprite && obj.scale.x <= 25) {
+        obj.visible = false;
+        if (interceptedRawTendrils.length > 0) {
+          interceptedRawTendrils[interceptedRawTendrils.length - 1].pulse = obj;
+        }
+      }
+    }
+    return scene.add(...objects);
+  };
+
+  // Reusable vectors for zero per-frame allocation
+  const tempV0 = new THREE.Vector3();
+  const tempV1 = new THREE.Vector3();
+  const tempTan = new THREE.Vector3();
+  const tempNorm = new THREE.Vector3();
+  const tempColor = new THREE.Color();
+
+  function updateTendrilVisuals(time, dt) {
+    const count = Math.min(visualTendrils.length, interceptedRawTendrils.length);
+    const innerH = window.innerHeight;
+
+    for (let i = 0; i < count; i++) {
+      const vt = visualTendrils[i];
+      const rt = interceptedRawTendrils[i];
+      const rawPos = rt.line.geometry.attributes.position.array;
+      const rawCount = rt.line.geometry.drawRange.count;
+      const rawOpacity = rt.line.material.opacity;
+      const isGripped = !!(rt.pulse && rt.pulse.material.opacity > 0.04);
+
+      // Track grip and release dynamics
+      vt.gripWeight += ((isGripped ? 1 : 0) - vt.gripWeight) * Math.min(1, dt * 7.0);
+
+      const isReleasing = (!isGripped && vt.prevRawOpacity > rawOpacity && rawOpacity > 0.05);
+      vt.prevRawOpacity = rawOpacity;
+
+      if (isReleasing) {
+        vt.releaseSpring += (1 - vt.releaseSpring) * Math.min(1, dt * 8.0);
+      } else {
+        vt.releaseSpring *= Math.exp(-dt * 4.0);
+      }
+
+      if (rawCount === 0 || rawOpacity < 0.01) {
+        vt.coreGeo.setDrawRange(0, 0);
+        vt.glowGeo.setDrawRange(0, 0);
+        vt.pulseGeo.setDrawRange(0, 0);
+        vt.driftGeo.setDrawRange(0, 0);
+        vt.sparkGeo.setDrawRange(0, 0);
+        vt.filamentGeo.setDrawRange(0, 0);
+        vt.gripRing.material.opacity = 0;
+        continue;
+      }
+
+      // Start at nucleus, end at tip
+      const startX = rawPos[0], startY = rawPos[1], startZ = rawPos[2];
+      const endX = rawPos[31 * 3], endY = rawPos[31 * 3 + 1], endZ = rawPos[31 * 3 + 2];
+      tempV0.set(startX, startY, startZ);
+      tempV1.set(endX, endY, endZ);
+
+      const chordX = endX - startX;
+      const chordY = endY - startY;
+      const chordLen = Math.hypot(chordX, chordY) || 1;
+      const chordNormX = -chordY / chordLen;
+      const chordNormY = chordX / chordLen;
+
+      // ─── 1 & 2. SHAPE & SLACK / TENSION ───
+      // When GRIPPED: tightens, straightens (low wobble, low S-curve) and gets brighter
+      // When REACHING: loose curve, swings with slight overshoot
+      // When RELEASING: whips back with a fast decaying spring oscillation
+      let wobbleAmp, sCurveAmp, travelSpeed, tensionBright;
+      if (isGripped) {
+        wobbleAmp = 2.4;
+        sCurveAmp = 1.8;
+        travelSpeed = 4.8;
+        tensionBright = 1.35;
+      } else if (isReleasing || vt.releaseSpring > 0.1) {
+        const whip = Math.sin(time * 18.0 + vt.id * 2.1) * vt.releaseSpring * 15.0;
+        wobbleAmp = 14.0 + whip;
+        sCurveAmp = 9.0;
+        travelSpeed = 4.2;
+        tensionBright = 0.95;
+      } else {
+        // Reaching: loose, swings with slight overshoot
+        const swing = Math.sin(time * 3.8 + vt.id * 1.7) * 4.5;
+        wobbleAmp = 12.0 + swing;
+        sCurveAmp = 10.5;
+        travelSpeed = 3.0;
+        tensionBright = 1.05;
+      }
+
+      // Generate 25 backbone points along the tendril
+      for (let s = 0; s <= RIBBON_SEGMENTS; s++) {
+        const u = s / RIBBON_SEGMENTS;
+        const rawIdx = Math.min(31, Math.floor(u * 31));
+        const rawNext = Math.min(31, rawIdx + 1);
+        const subFrac = (u * 31) - rawIdx;
+
+        // Base point interpolated from raw physics line
+        const bx = rawPos[rawIdx * 3] * (1 - subFrac) + rawPos[rawNext * 3] * subFrac;
+        const by = rawPos[rawIdx * 3 + 1] * (1 - subFrac) + rawPos[rawNext * 3 + 1] * subFrac;
+        const bz = rawPos[rawIdx * 3 + 2] * (1 - subFrac) + rawPos[rawNext * 3 + 2] * subFrac;
+
+        // Envelope: 0 at nucleus, 0 at tip, max in middle
+        const env = Math.sin(u * Math.PI);
+        // Gentle S-curve
+        const sOffset = Math.sin(u * Math.PI * 2.0) * sCurveAmp;
+        // Traveling slow sine wobble
+        const travelingWobble = Math.sin(u * 7.2 - time * travelSpeed + vt.id * 1.5) * wobbleAmp;
+
+        // Requirement 6: Prefer routing curve around paragraph blocks with a slight bend
+        let pBend = 0;
+        const screenPtX = bx;
+        const screenPtY = innerH - by;
+        for (let p = 0; p < cachedParagraphs.length; p++) {
+          const pr = cachedParagraphs[p];
+          if (screenPtX >= pr.left - 45 && screenPtX <= pr.right + 45 &&
+              screenPtY >= pr.top - 35 && screenPtY <= pr.bottom + 35) {
+            const side = (screenPtX < pr.midX) ? -1 : 1;
+            pBend += side * 14.0 * env;
+            break;
+          }
+        }
+
+        const totalPerp = (sOffset + travelingWobble + pBend) * env;
+        const pt = vt.curvePoints[s];
+        pt.set(
+          bx + chordNormX * totalPerp,
+          by + chordNormY * totalPerp,
+          bz
+        );
+      }
+
+      // ─── 3. CAMERA-FACING TAPERED RIBBON VERTICES & COLOR GRADIENTS ───
+      for (let s = 0; s <= RIBBON_SEGMENTS; s++) {
+        const u = s / RIBBON_SEGMENTS;
+        const pt = vt.curvePoints[s];
+
+        // Tangent
+        if (s === 0) {
+          tempTan.subVectors(vt.curvePoints[1], pt);
+        } else if (s === RIBBON_SEGMENTS) {
+          tempTan.subVectors(pt, vt.curvePoints[RIBBON_SEGMENTS - 1]);
+        } else {
+          tempTan.subVectors(vt.curvePoints[s + 1], vt.curvePoints[s - 1]);
+        }
+        const tLen = Math.hypot(tempTan.x, tempTan.y) || 1;
+        tempNorm.set(-tempTan.y / tLen, tempTan.x / tLen, 0);
+
+        // Width tapers from ~5px at base to ~1px at tip
+        const coreWidth = (5.0 * (1 - u) + 1.0 * u);
+        const glowWidth = coreWidth * 2.8; // Wider soft glow copy (~14px to ~2.8px)
+
+        // Core ribbon vertices
+        const vLeftIdx = s * 2;
+        const vRightIdx = s * 2 + 1;
+
+        vt.corePos[vLeftIdx * 3]     = pt.x + tempNorm.x * (coreWidth * 0.5);
+        vt.corePos[vLeftIdx * 3 + 1] = pt.y + tempNorm.y * (coreWidth * 0.5);
+        vt.corePos[vLeftIdx * 3 + 2] = pt.z;
+
+        vt.corePos[vRightIdx * 3]     = pt.x - tempNorm.x * (coreWidth * 0.5);
+        vt.corePos[vRightIdx * 3 + 1] = pt.y - tempNorm.y * (coreWidth * 0.5);
+        vt.corePos[vRightIdx * 3 + 2] = pt.z;
+
+        // Glow ribbon vertices
+        vt.glowPos[vLeftIdx * 3]     = pt.x + tempNorm.x * (glowWidth * 0.5);
+        vt.glowPos[vLeftIdx * 3 + 1] = pt.y + tempNorm.y * (glowWidth * 0.5);
+        vt.glowPos[vLeftIdx * 3 + 2] = pt.z - 0.2;
+
+        vt.glowPos[vRightIdx * 3]     = pt.x - tempNorm.x * (glowWidth * 0.5);
+        vt.glowPos[vRightIdx * 3 + 1] = pt.y - tempNorm.y * (glowWidth * 0.5);
+        vt.glowPos[vRightIdx * 3 + 2] = pt.z - 0.2;
+
+        // Requirement 6: Drop opacity to ~45% where tendril passes over body text
+        const scrX = pt.x;
+        const scrY = innerH - pt.y;
+        let isOverText = false;
+        for (let p = 0; p < cachedParagraphs.length; p++) {
+          const pr = cachedParagraphs[p];
+          if (scrX >= pr.left && scrX <= pr.right && scrY >= pr.top && scrY <= pr.bottom) {
+            isOverText = true;
+            break;
+          }
+        }
+        const textDim = isOverText ? 0.45 : 1.0;
+
+        // Color gradient: Base -> Mid -> Tip (never pure white)
+        if (u <= 0.5) {
+          tempColor.copy(vt.palette.base).lerp(vt.palette.mid, u / 0.5);
+        } else {
+          tempColor.copy(vt.palette.mid).lerp(vt.palette.tip, (u - 0.5) / 0.5);
+        }
+
+        const alphaCore = rawOpacity * textDim * tensionBright * atomOpacity;
+        const rC = tempColor.r * alphaCore;
+        const gC = tempColor.g * alphaCore;
+        const bC = tempColor.b * alphaCore;
+
+        vt.coreCol[vLeftIdx * 3]     = rC;
+        vt.coreCol[vLeftIdx * 3 + 1] = gC;
+        vt.coreCol[vLeftIdx * 3 + 2] = bC;
+        vt.coreCol[vRightIdx * 3]     = rC;
+        vt.coreCol[vRightIdx * 3 + 1] = gC;
+        vt.coreCol[vRightIdx * 3 + 2] = bC;
+
+        const alphaGlow = alphaCore * 0.26;
+        const rG = tempColor.r * alphaGlow;
+        const gG = tempColor.g * alphaGlow;
+        const bG = tempColor.b * alphaGlow;
+
+        vt.glowCol[vLeftIdx * 3]     = rG;
+        vt.glowCol[vLeftIdx * 3 + 1] = gG;
+        vt.glowCol[vLeftIdx * 3 + 2] = bG;
+        vt.glowCol[vRightIdx * 3]     = rG;
+        vt.glowCol[vRightIdx * 3 + 1] = gG;
+        vt.glowCol[vRightIdx * 3 + 2] = bG;
+      }
+
+      vt.coreGeo.attributes.position.needsUpdate = true;
+      vt.coreGeo.attributes.color.needsUpdate = true;
+      vt.coreGeo.setDrawRange(0, RIBBON_INDICES);
+
+      vt.glowGeo.attributes.position.needsUpdate = true;
+      vt.glowGeo.attributes.color.needsUpdate = true;
+      vt.glowGeo.setDrawRange(0, RIBBON_INDICES);
+
+      // ─── 4. ENERGY FLOW: BRIGHT PULSES & DRIFTING PARTICLES ───
+      // Small bright pulses travel along the ribbon (speed up when gripped)
+      const pulseSpeed = isGripped ? 1.75 : 0.85;
+      for (let p = 0; p < 3; p++) {
+        const uPulse = ((time * pulseSpeed + p / 3 + vt.id * 0.22) % 1.0);
+        const segIdx = Math.min(RIBBON_SEGMENTS - 1, Math.floor(uPulse * RIBBON_SEGMENTS));
+        const segFrac = (uPulse * RIBBON_SEGMENTS) - segIdx;
+        const pA = vt.curvePoints[segIdx];
+        const pB = vt.curvePoints[segIdx + 1];
+
+        const pX = pA.x * (1 - segFrac) + pB.x * segFrac;
+        const pY = pA.y * (1 - segFrac) + pB.y * segFrac;
+        const pZ = pA.z * (1 - segFrac) + pB.z * segFrac + 0.6;
+
+        vt.pulsePos[p * 3]     = pX;
+        vt.pulsePos[p * 3 + 1] = pY;
+        vt.pulsePos[p * 3 + 2] = pZ;
+
+        const pCol = vt.palette.tip;
+        const pAlpha = 0.95 * rawOpacity * atomOpacity;
+        vt.pulseCol[p * 3]     = pCol.r * pAlpha;
+        vt.pulseCol[p * 3 + 1] = pCol.g * pAlpha;
+        vt.pulseCol[p * 3 + 2] = pCol.b * pAlpha;
+      }
+      vt.pulseGeo.attributes.position.needsUpdate = true;
+      vt.pulseGeo.attributes.color.needsUpdate = true;
+      vt.pulseGeo.setDrawRange(0, 3);
+
+      // Fine drifting particles drifting off the line
+      for (let d = 0; d < 4; d++) {
+        const uDrift = ((d * 0.25 + vt.id * 0.15) % 0.8) + 0.1;
+        const segIdx = Math.min(RIBBON_SEGMENTS - 1, Math.floor(uDrift * RIBBON_SEGMENTS));
+        const pAnchor = vt.curvePoints[segIdx];
+
+        const driftDist = ((time * 24.0 + d * 18.0) % 20.0);
+        const driftFade = Math.max(0, 1.0 - driftDist / 20.0);
+        const sideSign = (d % 2 === 0) ? 1 : -1;
+
+        vt.driftPos[d * 3]     = pAnchor.x + chordNormX * (sideSign * driftDist);
+        vt.driftPos[d * 3 + 1] = pAnchor.y + chordNormY * (sideSign * driftDist);
+        vt.driftPos[d * 3 + 2] = pAnchor.z + 0.4;
+
+        const dCol = vt.palette.mid;
+        const dAlpha = driftFade * 0.55 * rawOpacity * atomOpacity;
+        vt.driftCol[d * 3]     = dCol.r * dAlpha;
+        vt.driftCol[d * 3 + 1] = dCol.g * dAlpha;
+        vt.driftCol[d * 3 + 2] = dCol.b * dAlpha;
+      }
+      vt.driftGeo.attributes.position.needsUpdate = true;
+      vt.driftGeo.attributes.color.needsUpdate = true;
+      vt.driftGeo.setDrawRange(0, 4);
+
+      // ─── 5. GRIP EFFECT: PULSE RING, SPARKS BURST, ROOT FILAMENTS ───
+      const tipPt = vt.curvePoints[RIBBON_SEGMENTS];
+
+      if (vt.gripWeight > 0.04) {
+        // 5a. Expanding & fading pulse ring
+        const ringCycle = ((time * 2.3 + vt.id * 0.4) % 1.0);
+        const ringScale = 6.0 + ringCycle * 22.0;
+        vt.gripRing.position.set(tipPt.x, tipPt.y, tipPt.z + 0.5);
+        vt.gripRing.scale.set(ringScale, ringScale, 1);
+        vt.gripRing.material.opacity = (1.0 - ringCycle) * 0.85 * vt.gripWeight * atomOpacity;
+
+        // 5b. 8 tiny spark particles bursting outward
+        for (let k = 0; k < 8; k++) {
+          const sparkAngle = k * (Math.PI * 2 / 8) + Math.sin(time * 2.5 + k) * 0.25;
+          const sparkProg = ((time * 3.0 + k * 0.125) % 1.0);
+          const sparkDist = sparkProg * 14.0;
+          const sFade = (1.0 - sparkProg) * vt.gripWeight * atomOpacity;
+
+          vt.sparkPos[k * 3]     = tipPt.x + Math.cos(sparkAngle) * sparkDist;
+          vt.sparkPos[k * 3 + 1] = tipPt.y + Math.sin(sparkAngle) * sparkDist;
+          vt.sparkPos[k * 3 + 2] = tipPt.z + 0.8;
+
+          const sCol = (k % 2 === 0) ? vt.palette.tip : vt.palette.mid;
+          vt.sparkCol[k * 3]     = sCol.r * sFade;
+          vt.sparkCol[k * 3 + 1] = sCol.g * sFade;
+          vt.sparkCol[k * 3 + 2] = sCol.b * sFade;
+        }
+        vt.sparkGeo.attributes.position.needsUpdate = true;
+        vt.sparkGeo.attributes.color.needsUpdate = true;
+        vt.sparkGeo.setDrawRange(0, 8);
+
+        // 5c. 3 short fine filaments (3 to 6px) spreading like roots
+        const rootAngles = [0.4, 2.3, 4.3];
+        const rootLens = [4.6, 5.8, 3.8];
+        for (let r = 0; r < 3; r++) {
+          const a = rootAngles[r] + Math.sin(time * 1.5 + r) * 0.15;
+          const len = rootLens[r];
+          // Root start at tip
+          vt.filamentPos[r * 6]     = tipPt.x;
+          vt.filamentPos[r * 6 + 1] = tipPt.y;
+          vt.filamentPos[r * 6 + 2] = tipPt.z + 0.3;
+          // Root end
+          vt.filamentPos[r * 6 + 3] = tipPt.x + Math.cos(a) * len;
+          vt.filamentPos[r * 6 + 4] = tipPt.y + Math.sin(a) * len;
+          vt.filamentPos[r * 6 + 5] = tipPt.z + 0.3;
+
+          const rCol = vt.palette.mid;
+          const rAlpha = 0.85 * vt.gripWeight * atomOpacity;
+          vt.filamentCol[r * 6]     = rCol.r * rAlpha;
+          vt.filamentCol[r * 6 + 1] = rCol.g * rAlpha;
+          vt.filamentCol[r * 6 + 2] = rCol.b * rAlpha;
+          vt.filamentCol[r * 6 + 3] = vt.palette.tip.r * rAlpha * 0.7;
+          vt.filamentCol[r * 6 + 4] = vt.palette.tip.g * rAlpha * 0.7;
+          vt.filamentCol[r * 6 + 5] = vt.palette.tip.b * rAlpha * 0.7;
+        }
+        vt.filamentGeo.attributes.position.needsUpdate = true;
+        vt.filamentGeo.attributes.color.needsUpdate = true;
+        vt.filamentGeo.setDrawRange(0, 6);
+      } else {
+        vt.gripRing.material.opacity = 0;
+        vt.sparkGeo.setDrawRange(0, 0);
+        vt.filamentGeo.setDrawRange(0, 0);
+      }
+    }
   }
 
   function renderLoop(now) {
@@ -931,7 +1499,7 @@ import { attachAtomReactivity } from './atom-react.js';
 
   const api = {
     THREE,
-    scene,
+    scene: sceneProxy,
     camera,
     atomRoot,
     renderer,
