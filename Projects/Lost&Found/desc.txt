@@ -1,0 +1,32 @@
+Lost and Found - A University lost and Found System
+
+Full-Stack Developer | Freelance Project
+
+Developed a centralized lost-and-found system for university campuses featuring QR code scanning for fast item identification. Enabled users to browse lost items, submit found reports, and manage records through an admin interface.
+
+React.js
+
+
+
+TypeScript
+
+
+
+Python (Programming Language)
+
+
+
+PostgreSQL
+
+
+
+Tailwind CSS
+
+
+
+Programmer
+
+
+
+Developer
+

@@ -1,5 +1,5 @@
 // ============================================
-// GERALD PANDAAN : PORTFOLIO
+// GERALD PANDAAN : PORTFOLIO — v2
 // Main interaction logic
 // ============================================
 
@@ -17,7 +17,6 @@
     if (!revealEls.length) return;
 
     if (prefersReduced) {
-      // Skip animations, show everything immediately
       revealEls.forEach(el => el.classList.add('visible'));
       return;
     }
@@ -63,13 +62,12 @@
 
   function animateCounter(el) {
     const target = parseInt(el.dataset.count, 10);
-    const duration = 1200; // ms
+    const duration = 1200;
     const start = performance.now();
 
     function tick(now) {
       const elapsed = now - start;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       el.textContent = Math.round(eased * target);
       if (progress < 1) {
@@ -180,8 +178,8 @@
       if (!ticking) {
         requestAnimationFrame(() => {
           if (window.scrollY > 50) {
-            nav.style.borderBottomColor = 'rgba(148, 163, 184, 0.15)';
-            nav.style.background = 'rgba(10, 15, 26, 0.95)';
+            nav.style.borderBottomColor = 'rgba(161, 161, 170, 0.12)';
+            nav.style.background = 'rgba(9, 9, 11, 0.95)';
           } else {
             nav.style.borderBottomColor = '';
             nav.style.background = '';
@@ -191,6 +189,87 @@
         ticking = true;
       }
     });
+  }
+
+  // ==========================================
+  // 9. CURSOR SPOTLIGHT on Project Cards
+  // ==========================================
+  function initCursorSpotlight() {
+    if (prefersReduced) return;
+
+    const cards = document.querySelectorAll('.project-card');
+    if (!cards.length) return;
+
+    cards.forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty('--mouse-x', `${x}px`);
+        card.style.setProperty('--mouse-y', `${y}px`);
+      });
+
+      // Reset position when mouse leaves for clean re-entry
+      card.addEventListener('mouseleave', () => {
+        card.style.setProperty('--mouse-x', '50%');
+        card.style.setProperty('--mouse-y', '50%');
+      });
+    });
+  }
+
+  // ==========================================
+  // 10. HEADING DECODE EFFECT
+  // ==========================================
+  function initHeadingDecode() {
+    if (prefersReduced) return;
+
+    const headings = document.querySelectorAll('.section-heading h2');
+    if (!headings.length) return;
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#@$%';
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          decodeText(entry.target);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.5 });
+
+    headings.forEach(h => {
+      // Store the original text
+      h.dataset.decoded = h.innerText;
+      observer.observe(h);
+    });
+
+    function decodeText(el) {
+      const originalText = el.dataset.decoded;
+      if (!originalText) return;
+
+      let iteration = 0;
+      const totalLength = originalText.length;
+      // Reveal ~2 characters per frame at 30ms intervals → fast and smooth
+      const speed = Math.max(1, Math.floor(totalLength / 20));
+
+      const interval = setInterval(() => {
+        el.innerText = originalText
+          .split('')
+          .map((char, index) => {
+            if (index < iteration) return originalText[index];
+            if (char === ' ') return ' ';
+            return chars[Math.floor(Math.random() * chars.length)];
+          })
+          .join('');
+
+        iteration += speed;
+
+        if (iteration >= totalLength) {
+          el.innerText = originalText;
+          clearInterval(interval);
+        }
+      }, 30);
+    }
   }
 
   // ==========================================
@@ -205,6 +284,8 @@
     initYear();
     initA11y();
     initNavScroll();
+    initCursorSpotlight();
+    initHeadingDecode();
   });
 
 })();

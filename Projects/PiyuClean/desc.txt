@@ -1,0 +1,36 @@
+PiyuClean - Web-Based Cleaning Service Management System
+
+Full-Stack Developer | Freelance Project
+
+Built a web-based cleaning service management system to streamline classroom operations. Implemented role-based dashboards for administrators and students, enabling task assignment, real-time progress tracking, and automated reports. Focused on clean UI, performance, and scalability.
+
+TypeScript
+
+
+
+Python (Programming Language)
+
+
+
+PostgreSQL
+
+
+
+Tailwind CSS
+
+
+
+React.js
+
+
+
+Vite
+
+
+
+Developer
+
+
+
+Programmer
+

@@ -1,0 +1,35 @@
+PiyuGuide - Student Inquiry Management System (Capstone)
+
+Lead Full-Stack Developer | Capstone Project
+
+Designed and developed a centralized inquiry management system for state universities. Supported multiple offices with real-time communication via WebSocket and one-on-one video counseling using WebRTC. Implemented access control, activity logging, and scalable backend architecture.
+
+HTML5
+
+
+
+Tailwind CSS
+
+
+
+Python (Programming Language)
+
+
+
+PostgreSQL
+
+
+
+JavaScript
+
+
+
+Developer
+
+
+
+Programmer
+
+
+
+Leader
