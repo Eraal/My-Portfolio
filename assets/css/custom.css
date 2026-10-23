@@ -48,7 +48,6 @@
 
 /* --- Base --- */
 html {
-  scroll-behavior: smooth;
   scroll-padding-top: 5rem;
 }
 
@@ -393,18 +392,152 @@ body {
   height: 400px;
 }
 
+/* A clear, contained 3D focal point in the hero instead of motion everywhere. */
+.hero-visual {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-visual::before {
+  content: "";
+  position: absolute;
+  inset: -8% -5%;
+  z-index: -1;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 50%;
+  transform: perspective(700px) rotateX(66deg) rotateZ(-18deg);
+  box-shadow: 0 0 35px rgba(56, 189, 248, 0.08), inset 0 0 28px rgba(56, 189, 248, 0.04);
+  animation: heroOrbit 18s linear infinite;
+  opacity: var(--orbit-visibility, 1);
+  transition: opacity 180ms linear;
+  pointer-events: none;
+}
+
+.hero-visual::after {
+  content: "";
+  position: absolute;
+  inset: 10% 14%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(56, 189, 248, 0.12), transparent 68%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.hero-profile-card {
+  background: rgba(9, 12, 18, 0.86);
+  border-color: rgba(56, 189, 248, 0.19);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45), 0 0 40px rgba(56, 189, 248, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+@keyframes heroOrbit {
+  from { rotate: 0deg; }
+  to { rotate: 360deg; }
+}
+
+/* Foreground atom guide follows the active heading through the page. */
+.atom-guide {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  opacity: 0;
+  transform: translate3d(-50%, -50%, 0) scale(0.72);
+  transition: opacity 450ms ease, transform 550ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+  will-change: left, top, opacity;
+}
+
+.atom-guide.is-visible {
+  opacity: 1;
+  transform: translate3d(-50%, -50%, 0) scale(1);
+}
+
+.atom-guide-model {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  perspective: 320px;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.42));
+  animation: atomGuideFloat 3.8s ease-in-out infinite;
+}
+
+.atom-guide-core {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  left: 26px;
+  top: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #7dd3fc 45%, #0ea5e9 100%);
+  box-shadow: 0 0 12px #38bdf8, 0 0 28px rgba(56, 189, 248, 0.9);
+}
+
+.atom-guide-orbit {
+  position: absolute;
+  inset: 8px 1px;
+  border: 1px solid rgba(125, 211, 252, 0.8);
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.12), 0 0 8px rgba(56, 189, 248, 0.14);
+}
+
+.atom-guide-orbit-a { transform: rotateX(67deg) rotateZ(-25deg); animation: atomOrbitA 5s linear infinite; }
+.atom-guide-orbit-b { transform: rotateY(67deg) rotateZ(35deg); border-color: rgba(196, 181, 253, 0.76); animation: atomOrbitB 6s linear infinite; }
+.atom-guide-orbit-c { transform: rotateX(25deg) rotateY(62deg) rotateZ(-55deg); border-color: rgba(56, 189, 248, 0.58); animation: atomOrbitC 7s linear infinite; }
+
+.atom-guide-orbit i {
+  position: absolute;
+  top: 50%;
+  right: 1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e0f2fe;
+  box-shadow: 0 0 9px 2px rgba(56, 189, 248, 0.9);
+}
+
+.atom-guide-orbit-b i { background: #ddd6fe; box-shadow: 0 0 9px 2px rgba(167, 139, 250, 0.9); }
+
+.atom-guide-caption {
+  max-width: 150px;
+  padding: 0.38rem 0.62rem;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 999px;
+  background: rgba(7, 12, 20, 0.94);
+  color: #d9f3ff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px rgba(56, 189, 248, 0.12);
+  font: 500 0.62rem/1.2 'JetBrains Mono', monospace;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+@keyframes atomGuideFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+@keyframes atomOrbitA { to { rotate: 1 0 0 360deg; } }
+@keyframes atomOrbitB { to { rotate: 0 1 0 360deg; } }
+@keyframes atomOrbitC { to { rotate: 0 0 1 360deg; } }
+
 /* =============================================
    PROJECT CARDS — with cursor spotlight
    ============================================= */
 .project-card {
   --mouse-x: 50%;
   --mouse-y: 50%;
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
   position: relative;
-  background: var(--bg-card);
+  background: rgba(9, 11, 16, 0.94);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   overflow: hidden;
-  transition: box-shadow 0.4s ease, transform 0.4s ease, border-color 0.4s ease;
+  transform: perspective(1100px) rotateX(var(--tilt-y)) rotateY(var(--tilt-x));
+  transition: box-shadow 0.4s ease, transform 0.18s ease-out, border-color 0.4s ease;
 }
 
 /* Cursor spotlight layer */
@@ -430,7 +563,7 @@ body {
 
 .project-card:hover {
   box-shadow: var(--shadow-md), var(--shadow-glow);
-  transform: translateY(-6px);
+  transform: perspective(1100px) rotateX(var(--tilt-y)) rotateY(var(--tilt-x)) translateY(-4px);
   border-color: var(--border-hover);
 }
 
@@ -680,6 +813,113 @@ body {
 }
 
 /* =============================================
+   3D SCENE CANVAS
+   ============================================= */
+#scene3d {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}
+
+/* Static fallback when WebGL fails */
+#scene-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 40%, #0f172a 0%, #09090b 70%);
+}
+
+/* Foreground 3D Atom Canvas */
+#foregroundAtomCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}
+
+/* =============================================
+   SCROLL PROGRESS INDICATOR
+   ============================================= */
+#scrollProgress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-soft));
+  transform-origin: left;
+  transform: scaleX(0);
+  z-index: 100;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* =============================================
+   TEXT READABILITY OVER 3D SCENE
+   ============================================= */
+/* Ensure hero and section text stay readable over the 3D background */
+#hero,
+#about,
+#experience,
+#projects,
+#certifications,
+#contact,
+#cv {
+  position: relative;
+  z-index: 1;
+}
+
+/* Subtle text-shadow for headings over the 3D canvas */
+.font-display {
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Ensure section backgrounds are semi-transparent so 3D shows through */
+section,
+header#hero {
+  background: transparent;
+}
+
+/* Subtle dark overlay on sections for readability */
+#about::before,
+#experience::before,
+#projects::before,
+#certifications::before,
+#contact::before,
+#cv::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 9, 11, 0.35);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Hero needs its own gradient treatment */
+#hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg,
+    rgba(9, 9, 11, 0.5) 0%,
+    rgba(15, 15, 18, 0.3) 40%,
+    rgba(9, 9, 11, 0.5) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Keep navigation above everything */
+#mainNav {
+  z-index: 50;
+}
+
+/* =============================================
    REDUCED MOTION
    ============================================= */
 @media (prefers-reduced-motion: reduce) {
@@ -702,6 +942,15 @@ body {
     transform: none;
   }
 
+  .hero-visual::before { animation: none; }
+
+  .hero-visual::before { opacity: 0.35; }
+
+  .atom-guide-model,
+  .atom-guide-orbit-a,
+  .atom-guide-orbit-b,
+  .atom-guide-orbit-c { animation: none !important; }
+
   .project-card:hover .project-card-img {
     transform: none;
   }
@@ -710,4 +959,16 @@ body {
   .card-surface:focus-within {
     transform: none;
   }
+
+  /* 3D scene: show static frame only */
+  #scene3d {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .atom-guide-model { width: 48px; height: 48px; flex-basis: 48px; }
+  .atom-guide-core { left: 19px; top: 19px; }
+  .atom-guide-orbit { inset: 6px 0; }
+  .atom-guide-caption { display: none; }
 }

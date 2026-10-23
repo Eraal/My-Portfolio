@@ -127,11 +127,12 @@
   }
 
   // ==========================================
-  // 5. SMOOTH SCROLL (fallback)
+  // 5. SMOOTH SCROLL (fallback — skipped when Lenis handles it)
   // ==========================================
   function initSmoothScroll() {
     if (prefersReduced) return;
-
+    // Lenis (from scroll3d.js) handles smooth scrolling when available
+    if (window.Lenis) return;
     document.querySelectorAll('a[href^="#"]').forEach(link => {
       link.addEventListener('click', e => {
         const targetId = link.getAttribute('href').substring(1);
@@ -205,14 +206,20 @@
         const rect = card.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
+        const nx = (x / rect.width) * 2 - 1;
+        const ny = (y / rect.height) * 2 - 1;
         card.style.setProperty('--mouse-x', `${x}px`);
         card.style.setProperty('--mouse-y', `${y}px`);
+        card.style.setProperty('--tilt-x', `${nx * 2.2}deg`);
+        card.style.setProperty('--tilt-y', `${ny * -2.2}deg`);
       });
 
       // Reset position when mouse leaves for clean re-entry
       card.addEventListener('mouseleave', () => {
         card.style.setProperty('--mouse-x', '50%');
         card.style.setProperty('--mouse-y', '50%');
+        card.style.setProperty('--tilt-x', '0deg');
+        card.style.setProperty('--tilt-y', '0deg');
       });
     });
   }
