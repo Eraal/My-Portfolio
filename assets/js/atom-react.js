@@ -272,9 +272,9 @@ export function attachAtomReactivity(atom) {
     const innerW = window.innerWidth;
     const innerH = window.innerHeight;
     const scrollDirY = scrollVelocity > 40 ? 1 : (scrollVelocity < -40 ? -1 : 0);
-    const isScrambling = Math.abs(scrollVelocity) > 260;
-    const maxSearchDist = isScrambling ? 420 : 320;
-    const minSearchDist = 75;
+    const isScrambling = Math.abs(scrollVelocity) > 100;
+    const maxSearchDist = isScrambling ? 720 : 520;
+    const minSearchDist = 25;
 
     let bestAnchor = null;
     let bestScore = -Infinity;
@@ -288,7 +288,7 @@ export function attachAtomReactivity(atom) {
       const screenY = a.pageY - scrollY;
 
       // Must be currently inside or near viewport
-      if (screenX < -40 || screenX > innerW + 40 || screenY < -40 || screenY > innerH + 40) {
+      if (screenX < -60 || screenX > innerW + 60 || screenY < -60 || screenY > innerH + 60) {
         continue;
       }
 
@@ -302,31 +302,31 @@ export function attachAtomReactivity(atom) {
 
       if (dist < minSearchDist || dist > maxSearchDist) continue;
 
-      // Base score: prefer optimal reach distance ~ 180px
-      let score = 300 - Math.abs(dist - 180);
+      // Base score: prefer natural reach distance ~ 180-260px
+      let score = 360 - Math.abs(dist - 220);
 
-      // Scroll direction bias
+      // Scroll direction bias: aggressively latch onto upcoming content
       if (scrollDirY !== 0) {
-        // If scrolling down, elements on screen move upwards, so anchors ahead are below atom in screen Y
+        // When scrolling down (scrollVelocity > 0), incoming content enters from below (screenY > atom, dy < 0)
         const inScrollDirection = (scrollDirY > 0 && dy < 0) || (scrollDirY < 0 && dy > 0);
-        if (inScrollDirection) score += isScrambling ? 180 : 90;
+        if (inScrollDirection) score += isScrambling ? 280 : 140;
       }
 
       // Bias toward side gutters & card edges
-      if (screenX < 240 || screenX > innerW - 240) score += 45;
-      if (a.type === 'card') score += 35;
-      if (a.type === 'badge') score += 20;
+      if (screenX < 280 || screenX > innerW - 280) score += 45;
+      if (a.type === 'card') score += 40;
+      if (a.type === 'badge') score += 25;
 
-      // Recency penalty: penalize elements visited within last 3 seconds
-      if (a.lastVisited && now - a.lastVisited < 3000) {
-        score -= (3000 - (now - a.lastVisited)) * 0.05;
+      // Soft recency penalty: gently expires in 1.2s instead of 3s lockout
+      if (a.lastVisited && now - a.lastVisited < 1200) {
+        score -= (1200 - (now - a.lastVisited)) * 0.05;
       }
 
       // Tendril phase angle bias: spread legs in different directions
       const legAngle = Math.atan2(dy, dx);
       const idealAngle = tendril.phase;
       const angleDiff = Math.abs(Math.atan2(Math.sin(legAngle - idealAngle), Math.cos(legAngle - idealAngle)));
-      score -= angleDiff * 25;
+      score -= angleDiff * 20;
 
       if (score > bestScore) {
         bestScore = score;
@@ -355,6 +355,7 @@ export function attachAtomReactivity(atom) {
     const innerW = window.innerWidth;
     const innerH = window.innerHeight;
     const atomPos = atom.position;
+    const isScrambling = Math.abs(scrollVel) > 100;
 
     netPull.set(0, 0, 0);
 
@@ -364,22 +365,31 @@ export function attachAtomReactivity(atom) {
     tendrils.forEach((tendril) => {
       // ─── STATE MACHINE ───
       if (tendril.state === 'SEARCH') {
-        tendril.weight = Math.max(0, tendril.weight - dt * 4.0);
+        // Keep weight high so search tendril is always an alive, visible probe
+        tendril.weight = Math.min(0.85, tendril.weight + dt * 4.0);
+
+        // Fluid organic probe motion in its assigned sector
+        const probeRadius = (isScrambling ? 220 : 150) + Math.sin(time * 3.0 + tendril.phase) * 35;
+        const probeAngle = tendril.phase + Math.sin(time * 2.2 + tendril.id * 1.5) * 0.45;
+        const probeTargetX = atomPos.x + Math.cos(probeAngle) * probeRadius;
+        const probeTargetY = atomPos.y + Math.sin(probeAngle) * probeRadius;
+        tendril.tipPos.lerp(new THREE.Vector3(probeTargetX, probeTargetY, 2), Math.min(1, dt * 7.0));
+
         const best = findBestAnchor(tendril, atomPos, scrollX, scrollY, scrollVel, now);
         if (best) {
           tendril.anchor = best;
           tendril.anchor.lastVisited = now;
           tendril.state = 'REACH';
           tendril.reachProgress = 0;
-          const fastFactor = Math.min(2.0, 1 + Math.abs(scrollVel) * 0.003);
-          tendril.reachDuration = Math.max(0.2, (0.35 + Math.random() * 0.2) / fastFactor);
+          const fastFactor = Math.min(3.5, 1 + Math.abs(scrollVel) * 0.005);
+          tendril.reachDuration = Math.max(0.12, (0.32 + Math.random() * 0.18) / fastFactor);
           tendril.scrapeOffset = 0;
         }
       }
 
       if (tendril.state === 'REACH') {
         tendril.reachProgress += dt / tendril.reachDuration;
-        tendril.weight = Math.min(1, tendril.weight + dt * 4.0);
+        tendril.weight = Math.min(1, tendril.weight + dt * 6.0);
 
         // Get current target anchor position in Three.js space
         const targetScreenX = tendril.anchor.pageX - scrollX;
@@ -394,7 +404,7 @@ export function attachAtomReactivity(atom) {
         if (tendril.reachProgress >= 1) {
           tendril.state = 'GRIP';
           tendril.gripTimer = 0;
-          tendril.gripDuration = 1.2 + Math.random() * 1.1;
+          tendril.gripDuration = 1.3 + Math.random() * 1.2;
 
           // React element
           if (tendril.anchor.type === 'card' && tendril.anchor.element) {
@@ -428,7 +438,7 @@ export function attachAtomReactivity(atom) {
         tendril.tipPos.set(targetScreenX, innerH - targetScreenY, 2);
 
         // Damped spring pull force: F = (anchor - pos) * k (k ~ 30)
-        const kPull = 30.0;
+        const kPull = 32.0;
         const pullX = (tendril.tipPos.x - atomPos.x) * kPull;
         const pullY = (tendril.tipPos.y - atomPos.y) * kPull;
         tendril.pullForce.set(pullX, pullY, 0);
@@ -436,14 +446,15 @@ export function attachAtomReactivity(atom) {
 
         // Release conditions:
         const dist = atomPos.distanceTo(tendril.tipPos);
-        const isNear = dist < 55;
-        const isOverstretched = dist > 360;
-        const outOfViewport = targetScreenX < -60 || targetScreenX > innerW + 60 ||
-                              targetScreenY < -60 || targetScreenY > innerH + 60;
+        const isNear = dist < 45;
+        const isOverstretched = dist > (isScrambling ? 540 : 440);
+        const isSeverelyOverstretched = dist > 640;
+        const outOfViewport = targetScreenX < -80 || targetScreenX > innerW + 80 ||
+                              targetScreenY < -80 || targetScreenY > innerH + 80;
         const timeout = tendril.gripTimer >= tendril.gripDuration;
 
-        // Gait safety: only release if at least 2 tendrils remain gripped, OR if overstretched/offscreen
-        const canRelease = (grippedCount > 2) || isOverstretched || outOfViewport;
+        // Gait safety: ensure at least 1-2 tendrils remain gripped unless severely overstretched or offscreen
+        const canRelease = (grippedCount > 1) || isSeverelyOverstretched || outOfViewport;
 
         if (canRelease && (isNear || isOverstretched || outOfViewport || timeout)) {
           tendril.state = 'RELEASE';
@@ -458,8 +469,8 @@ export function attachAtomReactivity(atom) {
       }
 
       if (tendril.state === 'RELEASE') {
-        tendril.releaseProgress -= dt / 0.22;
-        tendril.weight = Math.max(0, tendril.releaseProgress);
+        tendril.releaseProgress -= dt / 0.16;
+        tendril.weight = Math.max(0.65, tendril.releaseProgress);
 
         // Smoothly retract tip towards atom
         const targetScreenX = tendril.anchor ? tendril.anchor.pageX - scrollX : atomPos.x;
@@ -479,7 +490,8 @@ export function attachAtomReactivity(atom) {
 
       // Line tightens as it pulls: lower wobble and straighter line
       const isGripped = tendril.state === 'GRIP';
-      const wobbleAmp = isGripped ? 4.0 : 12.0;
+      const isReaching = tendril.state === 'REACH';
+      const wobbleAmp = isGripped ? 3.5 : 10.0;
       const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
       const dx = end.x - start.x;
       const dy = end.y - start.y;
@@ -488,7 +500,6 @@ export function attachAtomReactivity(atom) {
       const control = midpoint.add(new THREE.Vector3((-dy / len) * wobble, (dx / len) * wobble, 2));
 
       const curve = new THREE.QuadraticBezierCurve3(start, control, end);
-      const activeCount = tendril.weight > 0.05 ? pointCount : 0;
 
       for (let p = 0; p < pointCount; p++) {
         const u = p / (pointCount - 1);
@@ -498,11 +509,11 @@ export function attachAtomReactivity(atom) {
         tendril.positions[p * 3 + 2] = pt.z;
       }
       tendril.geometry.attributes.position.needsUpdate = true;
-      tendril.geometry.setDrawRange(0, activeCount);
+      tendril.geometry.setDrawRange(0, pointCount); // Always draw points so ribbon never collapses
 
-      // Straighter, brighter line during PULL
-      const brightnessBoost = isGripped ? 1.25 : 0.85;
-      tendril.material.opacity = Math.min(0.95, tendril.weight * brightnessBoost * atom.atomOpacity);
+      // Straighter, brighter line during PULL and active glow during SEARCH/REACH
+      const brightnessBoost = isGripped ? 1.3 : (isReaching ? 1.05 : 0.85);
+      tendril.material.opacity = Math.min(0.95, Math.max(0.48, tendril.weight) * brightnessBoost * atom.atomOpacity);
 
       // Flowing particles along the line
       for (let f = 0; f < 3; f++) {
@@ -513,7 +524,7 @@ export function attachAtomReactivity(atom) {
         tendril.flowPos[f * 3 + 2] = flowPt.z + 1;
       }
       tendril.flowGeo.attributes.position.needsUpdate = true;
-      tendril.flowMat.opacity = isGripped ? 0.95 * tendril.weight * atom.atomOpacity : 0.4 * tendril.weight;
+      tendril.flowMat.opacity = isGripped ? 0.95 * tendril.weight * atom.atomOpacity : 0.5 * tendril.weight * atom.atomOpacity;
 
       // Contact pulse ring at tip
       if (isGripped && tendril.weight > 0.5) {
