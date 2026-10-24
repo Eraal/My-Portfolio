@@ -1,14 +1,13 @@
 // ============================================
-// INTERACTIVE DOT GRID + HUD CURSOR
+// INTERACTIVE DOT GRID
 // Canvas-based background grid with repel physics
-// + custom crosshair cursor with contextual labels
 // ============================================
 
 (function () {
   'use strict';
 
   /* ═══════════════════════════════════════════════
-     CONFIGURATION — Tune these constants to taste
+     CONFIGURATION
      ═══════════════════════════════════════════════ */
   const CFG = {
     // Dot grid
@@ -24,14 +23,7 @@
     REPEL_FORCE:       6,             // strength of the push
     SPRING:            0.055,         // pull-back stiffness
     DAMPING:           0.82,          // velocity decay per frame
-
-    // Cursor HUD
-    CURSOR_LERP:       0.14,          // cursor smoothing (0 = frozen, 1 = instant)
-    RING_R:            14,            // ring radius at rest (px)
-    RING_R_HOVER:      22,            // ring radius on interactive hover
-    RING_LERP:         0.12,          // ring size transition speed
-    LABEL_LERP:        0.16,          // label fade speed
-    MAGNETIC:          0.12,          // magnetic pull toward hovered element center
+    LERP:              0.14,          // mouse position smoothing
   };
 
   /* ═══════════════════════════════════════════════
@@ -40,7 +32,7 @@
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const canHover = window.matchMedia('(hover: hover)').matches;
 
-  // On touch-only devices, bail entirely (no grid, no cursor)
+  // On touch-only devices without reduced motion, bail entirely
   if (!canHover && !prefersReduced) return;
 
   /* ═══════════════════════════════════════════════
@@ -48,17 +40,9 @@
      ═══════════════════════════════════════════════ */
   let rawMX = -400, rawMY = -400;       // raw mouse (from event)
   let mouseX = -400, mouseY = -400;     // throttled mouse (updated per frame)
-  let smoothX = -400, smoothY = -400;   // lerp'd cursor position
+  let smoothX = -400, smoothY = -400;   // lerp'd position
   let mouseInView = false;
-  let mouseDirty = false;               // true when mousemove fired since last frame
-
-  let hoverTarget = null;
-  let hoverLabel = '';
-  let lastLabel = '';                    // persisted for fade-out
-  let lastHoverX = -9999, lastHoverY = -9999;
-
-  let currentRingR = CFG.RING_R;
-  let labelAlpha = 0;
+  let mouseDirty = false;
 
   let dots = [];
   let W = 0, H = 0, dpr = 1;
@@ -66,34 +50,26 @@
   /* ═══════════════════════════════════════════════
      CANVAS SETUP
      ═══════════════════════════════════════════════ */
-  function makeCanvas(id, zIndex) {
-    const c = document.createElement('canvas');
-    c.id = id;
-    c.setAttribute('aria-hidden', 'true');
-    Object.assign(c.style, {
-      position: 'fixed', inset: '0',
-      zIndex: String(zIndex),
-      pointerEvents: 'none',
-    });
-    return c;
-  }
-
-  const gridCvs = makeCanvas('dotGrid', -1);
-  const cursorCvs = makeCanvas('cursorOverlay', 9999);
+  const gridCvs = document.createElement('canvas');
+  gridCvs.id = 'dotGrid';
+  gridCvs.setAttribute('aria-hidden', 'true');
+  Object.assign(gridCvs.style, {
+    position: 'fixed',
+    inset: '0',
+    zIndex: '-1',
+    pointerEvents: 'none',
+  });
   const gCtx = gridCvs.getContext('2d');
-  const cCtx = cursorCvs.getContext('2d');
 
   function sizeCanvases() {
     dpr = window.devicePixelRatio || 1;
     W = window.innerWidth;
     H = window.innerHeight;
-    [gridCvs, cursorCvs].forEach(c => {
-      c.width = W * dpr;
-      c.height = H * dpr;
-      c.style.width = W + 'px';
-      c.style.height = H + 'px';
-      c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
-    });
+    gridCvs.width = W * dpr;
+    gridCvs.height = H * dpr;
+    gridCvs.style.width = W + 'px';
+    gridCvs.style.height = H + 'px';
+    gCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   /* ═══════════════════════════════════════════════
@@ -193,210 +169,41 @@
   }
 
   /* ═══════════════════════════════════════════════
-     CURSOR HUD — Draw
-     ═══════════════════════════════════════════════ */
-  function drawCursor() {
-    cCtx.clearRect(0, 0, W, H);
-    if (!mouseInView) return;
-
-    const cx = smoothX, cy = smoothY;
-    const r = currentRingR;
-
-    // --- Ring ---
-    cCtx.strokeStyle = hoverTarget
-      ? 'rgba(56,189,248,0.55)'
-      : 'rgba(56,189,248,0.35)';
-    cCtx.lineWidth = 1;
-    cCtx.beginPath();
-    cCtx.arc(cx, cy, r, 0, 6.2832);
-    cCtx.stroke();
-
-    // --- Tick marks (outside ring, cardinal directions) ---
-    const ti = r + 3;
-    const to = r + 8;
-    cCtx.strokeStyle = 'rgba(56,189,248,0.2)';
-    cCtx.lineWidth = 0.75;
-    cCtx.beginPath();
-    cCtx.moveTo(cx, cy - ti); cCtx.lineTo(cx, cy - to);
-    cCtx.moveTo(cx, cy + ti); cCtx.lineTo(cx, cy + to);
-    cCtx.moveTo(cx - ti, cy); cCtx.lineTo(cx - to, cy);
-    cCtx.moveTo(cx + ti, cy); cCtx.lineTo(cx + to, cy);
-    cCtx.stroke();
-
-    // --- Center dot ---
-    cCtx.fillStyle = 'rgba(56,189,248,0.5)';
-    cCtx.beginPath();
-    cCtx.arc(cx, cy, 1.5, 0, 6.2832);
-    cCtx.fill();
-
-    // --- Coordinates ---
-    cCtx.font = "9px 'JetBrains Mono',monospace";
-    cCtx.fillStyle = 'rgba(56,189,248,0.28)';
-    cCtx.textBaseline = 'middle';
-    cCtx.fillText(
-      `${Math.round(mouseX)}, ${Math.round(mouseY)}`,
-      cx + r + 12,
-      cy + 1
-    );
-
-    // --- Label ---
-    if (labelAlpha > 0.01) {
-      const txt = hoverLabel || lastLabel;
-      if (txt) {
-        cCtx.save();
-        cCtx.globalAlpha = labelAlpha;
-        cCtx.font = "9px 'JetBrains Mono',monospace";
-        cCtx.fillStyle = 'rgba(56,189,248,0.7)';
-        cCtx.textAlign = 'center';
-        cCtx.textBaseline = 'bottom';
-        cCtx.fillText(txt, cx, cy - r - 8);
-        cCtx.restore();
-      }
-    }
-  }
-
-  /* ═══════════════════════════════════════════════
-     HOVER DETECTION — Label resolution
-     ═══════════════════════════════════════════════ */
-  function getLabelFor(el) {
-    if (!el) return '';
-
-    // Cards (outermost container matches)
-    if (el.classList.contains('project-card')) return '[ VIEW ]';
-    if (el.classList.contains('cert-card')) return '[ VIEW ]';
-
-    // Links
-    const a = el.tagName === 'A' ? el : el.closest('a');
-    if (a) {
-      if (a.hasAttribute('download'))       return '[ SAVE ]';
-      if (a.href && a.href.includes('mailto:')) return '[ EMAIL ]';
-      if (a.href && a.href.includes('tel:'))    return '[ CALL ]';
-      if (a.classList.contains('nav-link'))      return '[ GO ]';
-      if (a.classList.contains('social-icon'))   return '[ OPEN ]';
-      if (a.classList.contains('btn-primary'))   return '[ VISIT ]';
-      if (a.classList.contains('btn-secondary')) return '[ OPEN ]';
-      if (a.classList.contains('btn-ghost'))     return '[ VIEW ]';
-      return '[ OPEN ]';
-    }
-
-    // Buttons
-    if (el.tagName === 'BUTTON' || el.closest('button')) return '[ CLICK ]';
-
-    return '';
-  }
-
-  const INTERACTIVE_SELECTOR = 'a, button, [role="button"], .project-card, .cert-card';
-
-  function updateHoverState() {
-    if (!mouseInView) {
-      hoverTarget = null;
-      hoverLabel = '';
-      return;
-    }
-
-    // Throttle: only re-check when mouse moved ≥ 2 px
-    const hdx = mouseX - lastHoverX;
-    const hdy = mouseY - lastHoverY;
-    if (hdx * hdx + hdy * hdy < 4) return;
-    lastHoverX = mouseX;
-    lastHoverY = mouseY;
-
-    const el = document.elementFromPoint(mouseX, mouseY);
-    const interactive = el ? el.closest(INTERACTIVE_SELECTOR) : null;
-
-    if (interactive !== hoverTarget) {
-      hoverTarget = interactive;
-      hoverLabel = getLabelFor(interactive);
-      if (hoverLabel) lastLabel = hoverLabel;
-    }
-  }
-
-  /* ═══════════════════════════════════════════════
      MAIN ANIMATION LOOP
      ═══════════════════════════════════════════════ */
   function animate() {
-    // 1. Consume mouse (throttle to one read per frame)
     if (mouseDirty) {
       mouseX = rawMX;
       mouseY = rawMY;
       mouseDirty = false;
     }
 
-    // 2. Lerp cursor position + magnetic pull
-    let tx = mouseX, ty = mouseY;
-    if (hoverTarget && mouseInView) {
-      const r = hoverTarget.getBoundingClientRect();
-      tx += (r.left + r.width / 2 - mouseX) * CFG.MAGNETIC;
-      ty += (r.top + r.height / 2 - mouseY) * CFG.MAGNETIC;
-    }
-    smoothX += (tx - smoothX) * CFG.CURSOR_LERP;
-    smoothY += (ty - smoothY) * CFG.CURSOR_LERP;
+    smoothX += (mouseX - smoothX) * CFG.LERP;
+    smoothY += (mouseY - smoothY) * CFG.LERP;
 
-    // 3. Ring radius
-    const targetR = hoverTarget ? CFG.RING_R_HOVER : CFG.RING_R;
-    currentRingR += (targetR - currentRingR) * CFG.RING_LERP;
-
-    // 4. Label fade
-    const targetLA = hoverLabel ? 1 : 0;
-    labelAlpha += (targetLA - labelAlpha) * CFG.LABEL_LERP;
-
-    // 5. Hover detection
-    updateHoverState();
-
-    // 6. Render
     drawGrid();
-    drawCursor();
-
     requestAnimationFrame(animate);
-  }
-
-  /* ═══════════════════════════════════════════════
-     CSS — Hide default cursor (injected by JS so
-     the normal cursor stays if JS fails to load)
-     ═══════════════════════════════════════════════ */
-  function injectCursorCSS() {
-    const s = document.createElement('style');
-    s.textContent = [
-      'body.hud-cursor,',
-      'body.hud-cursor a,',
-      'body.hud-cursor button,',
-      'body.hud-cursor [role="button"],',
-      'body.hud-cursor label,',
-      'body.hud-cursor summary { cursor: none !important; }',
-      '',
-      'body.hud-cursor input,',
-      'body.hud-cursor textarea,',
-      'body.hud-cursor select,',
-      'body.hud-cursor [contenteditable="true"] { cursor: text !important; }',
-    ].join('\n');
-    document.head.appendChild(s);
   }
 
   /* ═══════════════════════════════════════════════
      INIT
      ═══════════════════════════════════════════════ */
   function init() {
-    // Insert grid canvas (first child → behind content via z-index: -1)
+    // Insert grid canvas behind content via z-index: -1
     document.body.prepend(gridCvs);
 
     sizeCanvases();
     initDots();
 
-    // ── Reduced motion: static grid, normal cursor, no animation ──
+    // Reduced motion: static grid, no animation
     if (prefersReduced) {
       drawStaticGrid();
       return;
     }
 
-    // ── Touch-only without reduced motion: skip everything ──
     if (!canHover) return;
 
-    // ── Full interactive mode ──
-    document.body.appendChild(cursorCvs);
-    injectCursorCSS();
-    document.body.classList.add('hud-cursor');
-
-    // Mouse tracking (passive, no preventDefault)
+    // Track mouse for dot grid physics
     document.addEventListener('mousemove', e => {
       rawMX = e.clientX;
       rawMY = e.clientY;
@@ -404,28 +211,20 @@
     }, { passive: true });
 
     document.addEventListener('mouseenter', () => { mouseInView = true; });
-    document.addEventListener('mouseleave', () => {
-      mouseInView = false;
-      hoverTarget = null;
-      hoverLabel = '';
-    });
+    document.addEventListener('mouseleave', () => { mouseInView = false; });
 
-    // Debounced resize
     let rTimer;
     window.addEventListener('resize', () => {
       clearTimeout(rTimer);
       rTimer = setTimeout(() => { sizeCanvases(); initDots(); }, 200);
     });
 
-    // Go
     requestAnimationFrame(animate);
   }
 
-  // Wait for DOM
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
-
 })();
