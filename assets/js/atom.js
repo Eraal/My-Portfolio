@@ -809,6 +809,95 @@ import { attachAtomReactivity } from './atom-react.js';
     );
   }
 
+  /* ═══════════════════════════════════════════════
+     CLICK INTERACTIONS STATE & SHOCKWAVE MESH
+     ═══════════════════════════════════════════════ */
+  let clickEffectsActive = false;
+  let clickEffectsTime = 0;
+  let electronBurstScale = 1.0;
+  let squishScale = 1.0;
+  let isShockwaveActive = false;
+  let shockwaveTime = 0;
+  let gripFlashActive = false;
+  let gripFlashTime = 0;
+  let hintPulseActive = false;
+  let hintPulseTime = 0;
+  let hintPulseScale = 1.0;
+
+  const maxShockwaveRadius = mobile ? 400 : 600;
+
+  // Thin cyan ring for additive shockwave expansion
+  const shockwaveGeo = new THREE.RingGeometry(0.975, 1.0, 64);
+  const shockwaveMat = new THREE.MeshBasicMaterial({
+    color: 0x38bdf8,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const shockwaveMesh = new THREE.Mesh(shockwaveGeo, shockwaveMat);
+  shockwaveMesh.visible = false;
+  scene.add(shockwaveMesh);
+
+  // Briefly glow card and badge borders as shockwave passes over them (desktop only)
+  function triggerCardShockwaveGlow(centerPos) {
+    if (mobile || reduceMotion) return;
+    const innerH = window.innerHeight;
+    const atomScreenX = centerPos.x;
+    const atomScreenY = innerH - centerPos.y;
+    const targets = document.querySelectorAll('.card-surface, .project-card, .cert-card, .badge-skill');
+    targets.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const cx = rect.left + rect.width * 0.5;
+      const cy = rect.top + rect.height * 0.5;
+      const dist = Math.hypot(cx - atomScreenX, cy - atomScreenY);
+      if (dist <= maxShockwaveRadius) {
+        const ease = dist / maxShockwaveRadius;
+        const progress = 1.0 - Math.pow(Math.max(0, 1.0 - ease), 1.0 / 2.5);
+        const delayMs = Math.max(0, Math.min(780, progress * 800));
+        setTimeout(() => {
+          el.classList.add('atom-card-shockwave');
+          setTimeout(() => {
+            el.classList.remove('atom-card-shockwave');
+          }, 400);
+        }, delayMs);
+      }
+    });
+  }
+
+  function triggerClickEffects() {
+    if (isShockwaveActive) {
+      // Only one shockwave at a time; extra clicks during it are ignored for shockwave
+      return false;
+    }
+
+    clickEffectsActive = true;
+    clickEffectsTime = 0;
+    gripFlashActive = true;
+    gripFlashTime = 0;
+    if (atomCrawler && typeof atomCrawler.triggerGripFlash === 'function') {
+      atomCrawler.triggerGripFlash();
+    }
+
+    if (!reduceMotion) {
+      isShockwaveActive = true;
+      shockwaveTime = 0;
+      shockwaveMesh.position.set(atomRoot.position.x, atomRoot.position.y, 1);
+      shockwaveMesh.scale.set(1, 1, 1);
+      shockwaveMesh.visible = true;
+      triggerCardShockwaveGlow(atomRoot.position);
+    }
+    return true;
+  }
+
+  function triggerHintPulse() {
+    if (reduceMotion) return;
+    hintPulseActive = true;
+    hintPulseTime = 0;
+  }
+
   function updateElectron(item, dt, speedBoost) {
     const pt = getOrbitPoint(item, item.angle);
     const distToCenter = pt.length();
@@ -817,6 +906,12 @@ import { attachAtomReactivity } from './atom-react.js';
     item.angle += dt * item.baseSpeed * speedBoost * keplerFactor;
     const currentPoint = getOrbitPoint(item, item.angle);
     const prevPoint = getOrbitPoint(item, item.angle - 0.03);
+
+    // Apply electron burst expansion on click
+    if (clickEffectsActive && !reduceMotion) {
+      currentPoint.multiplyScalar(electronBurstScale);
+      prevPoint.multiplyScalar(electronBurstScale);
+    }
 
     item.mesh.position.copy(currentPoint);
     item.glow.position.copy(currentPoint);
@@ -834,6 +929,9 @@ import { attachAtomReactivity } from './atom-react.js';
     for (let i = 0; i < trailCount; i++) {
       const trailAngle = item.angle - (i * 0.024 * speedBoost) / keplerFactor;
       const trailPt = getOrbitPoint(item, trailAngle);
+      if (clickEffectsActive && !reduceMotion) {
+        trailPt.multiplyScalar(electronBurstScale);
+      }
       positions[i * 3]     = trailPt.x;
       positions[i * 3 + 1] = trailPt.y;
       positions[i * 3 + 2] = trailPt.z;
@@ -861,15 +959,99 @@ import { attachAtomReactivity } from './atom-react.js';
       if (atomCrawler) atomCrawler.update(time, dt);
     }
 
+    // ─── SHOCKWAVE EXPANSION ───
+    if (isShockwaveActive && !reduceMotion) {
+      shockwaveTime += dt;
+      const progress = shockwaveTime / 0.8;
+      if (progress >= 1.0) {
+        isShockwaveActive = false;
+        shockwaveMesh.visible = false;
+      } else {
+        const ease = 1.0 - Math.pow(1.0 - progress, 2.5);
+        const radius = maxShockwaveRadius * ease;
+        shockwaveMesh.position.set(atomRoot.position.x, atomRoot.position.y, 1);
+        shockwaveMesh.scale.set(radius, radius, 1);
+        shockwaveMat.opacity = (1.0 - progress) * 0.88 * atomOpacity;
+        shockwaveMesh.visible = true;
+      }
+    } else {
+      shockwaveMesh.visible = false;
+    }
+
+    // ─── ELECTRON BURST & SQUISH TIMINGS ───
+    if (clickEffectsActive) {
+      clickEffectsTime += dt;
+      if (!reduceMotion) {
+        // Outward acceleration to 1.6x over 0.25s, then spring back with damping & overshoot
+        if (clickEffectsTime < 0.25) {
+          const tNorm = clickEffectsTime / 0.25;
+          electronBurstScale = 1.0 + 0.6 * (1.0 - Math.pow(1.0 - tNorm, 2.0));
+        } else if (clickEffectsTime < 0.8) {
+          const tDecay = (clickEffectsTime - 0.25) / 0.55;
+          electronBurstScale = 1.0 + 0.6 * Math.exp(-tDecay * 5.0) * Math.cos(tDecay * Math.PI * 3.5);
+        } else {
+          electronBurstScale = 1.0;
+        }
+
+        // Nucleus squish sequence: 0.9 -> 1.08 -> 1.0
+        if (clickEffectsTime < 0.12) {
+          const t = clickEffectsTime / 0.12;
+          squishScale = 1.0 + (0.9 - 1.0) * t;
+        } else if (clickEffectsTime < 0.28) {
+          const t = (clickEffectsTime - 0.12) / 0.16;
+          squishScale = 0.9 + (1.08 - 0.9) * t;
+        } else if (clickEffectsTime < 0.45) {
+          const t = (clickEffectsTime - 0.28) / 0.17;
+          squishScale = 1.08 + (1.0 - 1.08) * t;
+        } else {
+          squishScale = 1.0;
+        }
+      }
+
+      if (clickEffectsTime >= 0.8) {
+        clickEffectsActive = false;
+        electronBurstScale = 1.0;
+        squishScale = 1.0;
+      }
+    } else {
+      electronBurstScale = 1.0;
+      squishScale = 1.0;
+    }
+
+    // First-time hint pulse animation
+    if (hintPulseActive && !reduceMotion) {
+      hintPulseTime += dt;
+      const p = hintPulseTime / 0.55;
+      if (p >= 1.0) {
+        hintPulseActive = false;
+        hintPulseScale = 1.0;
+      } else {
+        hintPulseScale = 1.0 + Math.sin(p * Math.PI) * 0.14;
+      }
+    } else {
+      hintPulseScale = 1.0;
+    }
+
+    if (gripFlashActive) {
+      gripFlashTime += dt;
+      if (gripFlashTime >= 0.5) gripFlashActive = false;
+    }
+
     const motionTime = reduceMotion ? 0 : time;
     updateNucleus(motionTime);
+    nucleusGroup.scale.setScalar(squishScale);
+
+    // Orbital flare: 1.4x brightness easing back over 0.8s
+    const flareMultiplier = clickEffectsActive
+      ? (reduceMotion ? 1.0 + 0.2 * (1.0 - Math.min(1, clickEffectsTime / 0.4)) : 1.0 + 0.4 * Math.max(0, 1.0 - clickEffectsTime / 0.8))
+      : 1.0;
 
     orbitals.forEach((orb) => {
       orb.uniforms.uTime.value = motionTime;
-      orb.uniforms.uOpacity.value = atomOpacity * orb.def.brightness;
+      orb.uniforms.uOpacity.value = atomOpacity * orb.def.brightness * flareMultiplier;
       orb.points.rotation.z = motionTime * orb.def.speed * 0.35;
       orb.coreLine.rotation.z = motionTime * orb.def.speed * 0.35;
-      orb.coreLine.material.opacity = atomOpacity * orb.def.coreOpacity;
+      orb.coreLine.material.opacity = atomOpacity * orb.def.coreOpacity * flareMultiplier;
     });
 
     shellUniforms.uTime.value = motionTime;
@@ -1446,9 +1628,20 @@ import { attachAtomReactivity } from './atom-react.js';
         vt.filamentGeo.attributes.color.needsUpdate = true;
         vt.filamentGeo.setDrawRange(0, 6);
       } else {
-        vt.gripRing.material.opacity = 0;
         vt.sparkGeo.setDrawRange(0, 0);
         vt.filamentGeo.setDrawRange(0, 0);
+      }
+
+      // Tendril grip point flash expanding ring on click
+      if (gripFlashActive) {
+        const flashProg = Math.min(1.0, gripFlashTime / 0.5);
+        const flashScale = 14.0 + flashProg * 32.0;
+        const flashAlpha = (1.0 - flashProg) * 0.95 * atomOpacity;
+        vt.gripRing.position.set(tipPt.x, tipPt.y, tipPt.z + 0.6);
+        vt.gripRing.scale.set(flashScale, flashScale, 1);
+        vt.gripRing.material.opacity = Math.max(vt.gripRing.material.opacity, flashAlpha);
+      } else if (vt.gripWeight <= 0.04) {
+        vt.gripRing.material.opacity = 0;
       }
     }
   }
@@ -1506,6 +1699,9 @@ import { attachAtomReactivity } from './atom-react.js';
     canvas,
     sprite,
     velocity,
+    triggerClickEffects,
+    triggerHintPulse,
+    get isShockwaveActive() { return isShockwaveActive; },
     get atomOpacity() { return atomOpacity; },
     set atomOpacity(value) { atomOpacity = THREE.MathUtils.clamp(value, 0, 1); },
     get position() { return atomRoot.position; },

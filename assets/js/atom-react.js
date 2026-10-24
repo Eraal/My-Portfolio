@@ -342,6 +342,7 @@ export function attachAtomReactivity(atom) {
      ═══════════════════════════════════════════════ */
   const bodyVelocity = atom.velocity || new THREE.Vector3();
   const netPull = new THREE.Vector3();
+  let gripFlashProgress = 0;
 
   function updateCrawler(time, dt) {
     if (reduceMotion) return;
@@ -529,13 +530,22 @@ export function attachAtomReactivity(atom) {
       // Contact pulse ring at tip
       if (isGripped && tendril.weight > 0.5) {
         tendril.pulse.position.copy(end);
-        const pulseScale = 14 + Math.sin(time * 6.0 + tendril.phase) * 5;
+        const pulseScale = (14 + Math.sin(time * 6.0 + tendril.phase) * 5) + gripFlashProgress * 18;
         tendril.pulse.scale.set(pulseScale, pulseScale, 1);
-        tendril.pulseMat.opacity = 0.75 * tendril.weight * atom.atomOpacity;
+        tendril.pulseMat.opacity = Math.max(0.75 * tendril.weight * atom.atomOpacity, gripFlashProgress * 0.95 * atom.atomOpacity);
+      } else if (gripFlashProgress > 0) {
+        tendril.pulse.position.copy(end);
+        const pulseScale = 14 + gripFlashProgress * 20;
+        tendril.pulse.scale.set(pulseScale, pulseScale, 1);
+        tendril.pulseMat.opacity = gripFlashProgress * 0.85 * atom.atomOpacity;
       } else {
         tendril.pulseMat.opacity = 0;
       }
     });
+
+    if (gripFlashProgress > 0) {
+      gripFlashProgress = Math.max(0, gripFlashProgress - dt * 2.0);
+    }
 
     // ─── 5. SPRING-DAMPED BODY LOCOMOTION ───
     const effectiveGripped = Math.max(1, grippedCount);
@@ -612,6 +622,9 @@ export function attachAtomReactivity(atom) {
 
   return {
     update: updateCrawler,
+    triggerGripFlash() {
+      gripFlashProgress = 1.0;
+    },
     destroy() {
       style.remove();
       tendrils.forEach((t) => {
