@@ -1576,7 +1576,8 @@ import { attachAtomReactivity } from './atom-react.js';
     }
 
     internalMotionTime += (reduceMotion ? 0 : dt * internalAnimRate);
-    updateNucleus(internalMotionTime);
+    const motionTime = reduceMotion ? 0 : internalMotionTime;
+    updateNucleus(motionTime);
     nucleusGroup.scale.setScalar(squishScale * pulseAfterSparks * hintPulseScale);
 
     // Orbital flare: 1.4x brightness easing back over 0.8s
@@ -1602,7 +1603,7 @@ import { attachAtomReactivity } from './atom-react.js';
     nucleusGlow.material.opacity = atomOpacity * 0.42;
 
     const speedBoost = reduceMotion ? 1 : 1 + Math.min(2.5, Math.abs(scrollVelocity) * 0.001);
-    electrons.forEach((item) => updateElectron(item, reduceMotion ? 0 : dt, speedBoost));
+    electrons.forEach((item) => updateElectron(item, reduceMotion ? 0 : dt * internalAnimRate, speedBoost));
 
     if (!reduceMotion && updateTendrilVisuals) {
       updateTendrilVisuals(motionTime, dt);
