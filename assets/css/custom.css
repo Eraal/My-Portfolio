@@ -1179,11 +1179,53 @@ header#hero {
   outline-offset: 4px;
 }
 
-/* Card & badge border glow when hit by shockwave */
-.atom-card-shockwave {
-  box-shadow: 0 0 28px rgba(56, 189, 248, 0.55), inset 0 0 10px rgba(56, 189, 248, 0.22) !important;
-  border-color: rgba(56, 189, 248, 0.9) !important;
+/* Card & badge border glow when hit by shockwave / lightning arc */
+.atom-card-shockwave,
+.atom-arc-flash {
+  box-shadow: 0 0 26px rgba(56, 189, 248, 0.6), inset 0 0 10px rgba(56, 189, 248, 0.26) !important;
+  border-color: rgba(125, 211, 252, 0.9) !important;
   transition: box-shadow 350ms ease, border-color 350ms ease !important;
+}
+
+/* Page text glitch reaction on discharge */
+.atom-text-glitch {
+  display: inline-block;
+  animation: atomTextGlitch 0.28s ease-out forwards;
+}
+
+@keyframes atomTextGlitch {
+  0% {
+    transform: translate(0, 0);
+    text-shadow: none;
+  }
+  25% {
+    transform: translate(-2px, 1px);
+    text-shadow: 2px 0 rgba(56, 189, 248, 0.85), -2px 0 rgba(139, 92, 246, 0.85);
+  }
+  50% {
+    transform: translate(2px, -1.5px);
+    text-shadow: -2px 0 rgba(56, 189, 248, 0.85), 2px 0 rgba(139, 92, 246, 0.85);
+  }
+  75% {
+    transform: translate(-1px, 1px);
+    text-shadow: 1px 0 rgba(56, 189, 248, 0.5), -1px 0 rgba(139, 92, 246, 0.5);
+  }
+  100% {
+    transform: translate(0, 0);
+    text-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atom-text-glitch {
+    animation: none !important;
+    transform: none !important;
+    text-shadow: none !important;
+  }
+  .atom-arc-flash,
+  .atom-card-shockwave {
+    transition: none !important;
+  }
 }
 
 /* Radial Guide Menu container */

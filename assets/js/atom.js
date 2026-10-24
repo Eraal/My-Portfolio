@@ -741,6 +741,7 @@ import { attachAtomReactivity } from './atom-react.js';
     );
 
     electrons.push({
+      index: i,
       mesh,
       glow,
       trail,
@@ -785,14 +786,29 @@ import { attachAtomReactivity } from './atom-react.js';
      5. ANIMATION UPDATES
      ═══════════════════════════════════════════════ */
   function updateNucleus(time) {
+    let scatterDist = 0;
+    if (isDischargeActive && !reduceMotion) {
+      if (dischargeTime < 0.07) {
+        const t = dischargeTime / 0.07;
+        scatterDist = 6.0 * (t * (2.0 - t));
+      } else if (dischargeTime < 0.28) {
+        const t = (dischargeTime - 0.07) / 0.21;
+        scatterDist = 6.0 * Math.exp(-t * 5.0) * Math.cos(t * Math.PI * 1.5);
+      }
+    }
+
     for (let i = 0; i < nucleusCount; i++) {
       const base = nucleusBase[i];
-      // ~0.5px quantum shimmer jitter
       const jitter = reduceMotion ? 0 : 0.5;
+      const bLen = Math.hypot(base.x, base.y, base.z) || 1;
+      const nx = base.x / bLen;
+      const ny = base.y / bLen;
+      const nz = base.z / bLen;
+
       nucleonDummy.position.set(
-        base.x + Math.sin(time * 9.2 + i * 2.1) * jitter,
-        base.y + Math.cos(time * 8.4 + i * 2.7) * jitter,
-        base.z + Math.sin(time * 7.9 + i * 1.6) * jitter
+        base.x + nx * scatterDist + Math.sin(time * 9.2 + i * 2.1) * jitter,
+        base.y + ny * scatterDist + Math.cos(time * 8.4 + i * 2.7) * jitter,
+        base.z + nz * scatterDist + Math.sin(time * 7.9 + i * 1.6) * jitter
       );
       const scale = 0.96 + (i % 3) * 0.03;
       nucleonDummy.scale.setScalar(scale);
@@ -810,85 +826,351 @@ import { attachAtomReactivity } from './atom-react.js';
   }
 
   /* ═══════════════════════════════════════════════
-     CLICK INTERACTIONS STATE & SHOCKWAVE MESH
+     ENERGY-DISCHARGE CLICK INTERACTION STATE & MESHES
      ═══════════════════════════════════════════════ */
-  let clickEffectsActive = false;
-  let clickEffectsTime = 0;
-  let electronBurstScale = 1.0;
+  let isDischargeActive = false;
+  let dischargeTime = 0;
+  const DISCHARGE_DURATION = 1.1; // Total ~1.1s, only one at a time
+
+  let internalAnimRate = 1.0;
+  let internalMotionTime = 0;
+  let pulseAfterSparks = 1.0;
   let squishScale = 1.0;
-  let isShockwaveActive = false;
-  let shockwaveTime = 0;
-  let gripFlashActive = false;
-  let gripFlashTime = 0;
+
   let hintPulseActive = false;
   let hintPulseTime = 0;
   let hintPulseScale = 1.0;
 
-  const maxShockwaveRadius = mobile ? 400 : 600;
+  let gripFlashActive = false;
+  let gripFlashTime = 0;
 
-  // Thin cyan ring for additive shockwave expansion
-  const shockwaveGeo = new THREE.RingGeometry(0.975, 1.0, 64);
-  const shockwaveMat = new THREE.MeshBasicMaterial({
-    color: 0x38bdf8,
+  // ─── 1. NUCLEUS FLASH (Additive Sprite) ───
+  const nucleusFlashSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: sprite,
+    color: 0xe0f7ff,
     transparent: true,
     opacity: 0,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+  }));
+  const flashSize = mobile ? 92 : 144;
+  nucleusFlashSprite.scale.set(flashSize, flashSize, 1);
+  nucleusFlashSprite.position.set(0, 0, 2);
+  nucleusFlashSprite.visible = false;
+  nucleusGroup.add(nucleusFlashSprite);
+
+  // ─── 2. PARTICLE BURST (Custom Shader Streak Points) ───
+  const MAX_SPARKS = mobile ? 100 : 250;
+  const sparkPositions = new Float32Array(MAX_SPARKS * 3);
+  const sparkVelocities = new Float32Array(MAX_SPARKS * 3);
+  const sparkColors = new Float32Array(MAX_SPARKS * 3);
+  const sparkLifeArr = new Float32Array(MAX_SPARKS);
+  const sparkMaxLifeArr = new Float32Array(MAX_SPARKS);
+  let sparkActiveCount = 0;
+
+  const sparkGeo = new THREE.BufferGeometry();
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
+  sparkGeo.setAttribute('aVelocity', new THREE.BufferAttribute(sparkVelocities, 3));
+  sparkGeo.setAttribute('color', new THREE.BufferAttribute(sparkColors, 3));
+  sparkGeo.setAttribute('aLife', new THREE.BufferAttribute(new Float32Array(MAX_SPARKS), 1));
+  sparkGeo.setDrawRange(0, 0);
+
+  const sparkVertShader = `
+    attribute vec3 aVelocity;
+    attribute float aLife;
+    varying vec3 vColor;
+    varying vec2 vVelocity2D;
+    varying float vLife;
+    uniform float uCameraDistance;
+
+    void main() {
+      vColor = color;
+      vVelocity2D = aVelocity.xy;
+      vLife = aLife;
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      float speed = length(aVelocity.xy);
+      float ptSize = clamp(speed * 0.038, 6.0, 18.0);
+      gl_PointSize = ptSize * (uCameraDistance / -mvPosition.z);
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `;
+
+  const sparkFragShader = `
+    varying vec3 vColor;
+    varying vec2 vVelocity2D;
+    varying float vLife;
+    uniform float uAtomOpacity;
+
+    void main() {
+      if (vLife <= 0.01) discard;
+      vec2 p = gl_PointCoord - vec2(0.5);
+      vec2 dir = normalize(vVelocity2D + vec2(0.0001, 0.0001));
+      float dPerp = abs(p.x * dir.y - p.y * dir.x);
+      float dAlong = abs(dot(p, dir));
+      float streak = smoothstep(0.40, 0.03, dPerp * 3.8) * smoothstep(0.5, 0.05, dAlong);
+      float a = streak * vLife * uAtomOpacity;
+      if (a <= 0.01) discard;
+      gl_FragColor = vec4(vColor, a);
+    }
+  `;
+
+  const sparkMat = new THREE.ShaderMaterial({
+    vertexShader: sparkVertShader,
+    fragmentShader: sparkFragShader,
+    uniforms: {
+      uCameraDistance: { value: 1000 },
+      uAtomOpacity: { value: 1.0 },
+    },
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    vertexColors: true,
+  });
+  const sparkPointsMesh = new THREE.Points(sparkGeo, sparkMat);
+  scene.add(sparkPointsMesh);
+
+  // ─── 3. LIGHTNING ARCS (Jagged Tapered Ribbons & Target Sparks) ───
+  const MAX_ARCS = mobile ? 3 : 6;
+  const ARC_SEGMENTS = 8;
+  const ARC_POINTS = ARC_SEGMENTS + 1; // 9 points
+  const ARC_VERTS = ARC_POINTS * 2;    // 18 vertices
+
+  const arcCoreGeo = new THREE.BufferGeometry();
+  const arcCorePos = new Float32Array(MAX_ARCS * ARC_VERTS * 3);
+  const arcCoreCol = new Float32Array(MAX_ARCS * ARC_VERTS * 3);
+  arcCoreGeo.setAttribute('position', new THREE.BufferAttribute(arcCorePos, 3));
+  arcCoreGeo.setAttribute('color', new THREE.BufferAttribute(arcCoreCol, 3));
+
+  const arcGlowGeo = new THREE.BufferGeometry();
+  const arcGlowPos = new Float32Array(MAX_ARCS * ARC_VERTS * 3);
+  const arcGlowCol = new Float32Array(MAX_ARCS * ARC_VERTS * 3);
+  arcGlowGeo.setAttribute('position', new THREE.BufferAttribute(arcGlowPos, 3));
+  arcGlowGeo.setAttribute('color', new THREE.BufferAttribute(arcGlowCol, 3));
+
+  const arcIndices = new Uint16Array(MAX_ARCS * ARC_SEGMENTS * 6);
+  for (let a = 0; a < MAX_ARCS; a++) {
+    const vOffset = a * ARC_VERTS;
+    const iOffset = a * ARC_SEGMENTS * 6;
+    for (let s = 0; s < ARC_SEGMENTS; s++) {
+      const v0 = vOffset + s * 2;
+      const v1 = vOffset + s * 2 + 1;
+      const v2 = vOffset + (s + 1) * 2;
+      const v3 = vOffset + (s + 1) * 2 + 1;
+      const idx = iOffset + s * 6;
+      arcIndices[idx]     = v0;
+      arcIndices[idx + 1] = v1;
+      arcIndices[idx + 2] = v2;
+      arcIndices[idx + 3] = v2;
+      arcIndices[idx + 4] = v1;
+      arcIndices[idx + 5] = v3;
+    }
+  }
+  arcCoreGeo.setIndex(new THREE.BufferAttribute(arcIndices, 1));
+  arcGlowGeo.setIndex(new THREE.BufferAttribute(arcIndices, 1));
+
+  const arcCoreMat = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
     side: THREE.DoubleSide,
   });
-  const shockwaveMesh = new THREE.Mesh(shockwaveGeo, shockwaveMat);
-  shockwaveMesh.visible = false;
-  scene.add(shockwaveMesh);
+  const arcGlowMat = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
 
-  // Briefly glow card and badge borders as shockwave passes over them (desktop only)
-  function triggerCardShockwaveGlow(centerPos) {
-    if (mobile || reduceMotion) return;
-    const innerH = window.innerHeight;
-    const atomScreenX = centerPos.x;
-    const atomScreenY = innerH - centerPos.y;
-    const targets = document.querySelectorAll('.card-surface, .project-card, .cert-card, .badge-skill');
-    targets.forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      const cx = rect.left + rect.width * 0.5;
-      const cy = rect.top + rect.height * 0.5;
-      const dist = Math.hypot(cx - atomScreenX, cy - atomScreenY);
-      if (dist <= maxShockwaveRadius) {
-        const ease = dist / maxShockwaveRadius;
-        const progress = 1.0 - Math.pow(Math.max(0, 1.0 - ease), 1.0 / 2.5);
-        const delayMs = Math.max(0, Math.min(780, progress * 800));
-        setTimeout(() => {
-          el.classList.add('atom-card-shockwave');
-          setTimeout(() => {
-            el.classList.remove('atom-card-shockwave');
-          }, 400);
-        }, delayMs);
-      }
+  const arcCoreMesh = new THREE.Mesh(arcCoreGeo, arcCoreMat);
+  const arcGlowMesh = new THREE.Mesh(arcGlowGeo, arcGlowMat);
+  arcCoreGeo.setDrawRange(0, 0);
+  arcGlowGeo.setDrawRange(0, 0);
+  scene.add(arcGlowMesh);
+  scene.add(arcCoreMesh);
+
+  // Tiny spark burst at each arc target contact point (8 particles per arc)
+  const TARGET_SPARKS_PER_ARC = 8;
+  const TOTAL_TARGET_SPARKS = MAX_ARCS * TARGET_SPARKS_PER_ARC;
+  const targetSparkPos = new Float32Array(TOTAL_TARGET_SPARKS * 3);
+  const targetSparkCol = new Float32Array(TOTAL_TARGET_SPARKS * 3);
+  const targetSparkGeo = new THREE.BufferGeometry();
+  targetSparkGeo.setAttribute('position', new THREE.BufferAttribute(targetSparkPos, 3));
+  targetSparkGeo.setAttribute('color', new THREE.BufferAttribute(targetSparkCol, 3));
+  targetSparkGeo.setDrawRange(0, 0);
+
+  const targetSparkMat = new THREE.PointsMaterial({
+    size: 4.8,
+    map: sprite,
+    transparent: true,
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: false,
+  });
+  const targetSparkMesh = new THREE.Points(targetSparkGeo, targetSparkMat);
+  scene.add(targetSparkMesh);
+
+  // Reusable points for arc polyline midpoint displacement
+  const arcPolyPoints = [];
+  for (let a = 0; a < MAX_ARCS; a++) {
+    const pts = [];
+    for (let p = 0; p < ARC_POINTS; p++) pts.push(new THREE.Vector3());
+    arcPolyPoints.push(pts);
+  }
+
+  // Preallocated jitter seeds for 40ms flicker
+  let lastArcFlickerCycle = -1;
+  const arcOffsets = [];
+  for (let a = 0; a < MAX_ARCS; a++) {
+    arcOffsets.push({
+      mid: 0,
+      q1: 0, q2: 0,
+      o1: 0, o2: 0, o3: 0, o4: 0,
     });
   }
 
+  function randomizeArcOffsets() {
+    for (let a = 0; a < MAX_ARCS; a++) {
+      const o = arcOffsets[a];
+      o.mid = (Math.random() - 0.5) * 28.0; // max 14px
+      o.q1  = (Math.random() - 0.5) * 16.0; // max 8px
+      o.q2  = (Math.random() - 0.5) * 16.0;
+      o.o1  = (Math.random() - 0.5) * 8.0;
+      o.o2  = (Math.random() - 0.5) * 8.0;
+      o.o3  = (Math.random() - 0.5) * 8.0;
+      o.o4  = (Math.random() - 0.5) * 8.0;
+    }
+  }
+  randomizeArcOffsets();
+
+  let activeLightningTargets = [];
+
+  // ─── 4. EJECTED ELECTRONS STATE ───
+  const NUM_EJECTED = mobile ? 2 : 3;
+  const ejectedStartPos = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const ejectedMidOut = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const ejectedTargets = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+
+  // Palette colors
+  const COL_LIGHT_CYAN = new THREE.Color('#e0f7ff');
+  const COL_CYAN       = new THREE.Color('#38bdf8');
+  const COL_VIOLET     = new THREE.Color('#8b5cf6');
+
   function triggerClickEffects() {
-    if (isShockwaveActive) {
-      // Only one shockwave at a time; extra clicks during it are ignored for shockwave
+    if (isDischargeActive) {
+      // Only one discharge sequence at a time; extra clicks ignored for effects
       return false;
     }
 
-    clickEffectsActive = true;
-    clickEffectsTime = 0;
+    isDischargeActive = true;
+    dischargeTime = 0;
     gripFlashActive = true;
     gripFlashTime = 0;
+
     if (atomCrawler && typeof atomCrawler.triggerGripFlash === 'function') {
       atomCrawler.triggerGripFlash();
     }
 
-    if (!reduceMotion) {
-      isShockwaveActive = true;
-      shockwaveTime = 0;
-      shockwaveMesh.position.set(atomRoot.position.x, atomRoot.position.y, 1);
-      shockwaveMesh.scale.set(1, 1, 1);
-      shockwaveMesh.visible = true;
-      triggerCardShockwaveGlow(atomRoot.position);
+    if (reduceMotion) {
+      // Reduced motion: soft glow on the nucleus for 300ms, no burst/arcs/glitch
+      return true;
     }
+
+    const innerH = window.innerHeight;
+    const atomScreenX = atomRoot.position.x;
+    const atomScreenY = innerH - atomRoot.position.y;
+
+    // 1. Particle burst spawn (~250 sparks desktop, 100 mobile)
+    const rootPos = atomRoot.position;
+    for (let i = 0; i < MAX_SPARKS; i++) {
+      sparkPositions[i * 3]     = rootPos.x;
+      sparkPositions[i * 3 + 1] = rootPos.y;
+      sparkPositions[i * 3 + 2] = rootPos.z + (Math.random() - 0.5) * 8.0;
+
+      const theta = Math.random() * Math.PI * 2;
+      const speed = 250 + Math.random() * 450; // 250 to 700 px/s
+      sparkVelocities[i * 3]     = Math.cos(theta) * speed;
+      sparkVelocities[i * 3 + 1] = Math.sin(theta) * speed;
+      sparkVelocities[i * 3 + 2] = (Math.random() - 0.5) * 60.0;
+
+      const r = Math.random();
+      const c = r < 0.20 ? COL_VIOLET : (r < 0.65 ? COL_CYAN : COL_LIGHT_CYAN);
+      sparkColors[i * 3]     = c.r;
+      sparkColors[i * 3 + 1] = c.g;
+      sparkColors[i * 3 + 2] = c.b;
+
+      const life = 0.5 + Math.random() * 0.4; // 0.5 to 0.9s
+      sparkLifeArr[i] = life;
+      sparkMaxLifeArr[i] = life;
+    }
+    sparkActiveCount = MAX_SPARKS;
+    sparkGeo.setDrawRange(0, MAX_SPARKS);
+
+    // 2. Query nearby reactive targets for lightning arcs (4 to 6 nearest within ~320px)
+    if (atomCrawler && typeof atomCrawler.getNearbyReactiveTargets === 'function') {
+      activeLightningTargets = atomCrawler.getNearbyReactiveTargets(atomScreenX, atomScreenY, 320, MAX_ARCS);
+    } else {
+      activeLightningTargets = [];
+    }
+
+    // Flash struck element borders
+    activeLightningTargets.forEach((t) => {
+      if (t.element) {
+        t.element.classList.add('atom-arc-flash');
+        setTimeout(() => {
+          t.element.classList.remove('atom-arc-flash');
+        }, 350);
+      }
+    });
+
+    // 3. Ejected electrons target selection (3 nearby text elements)
+    let textTargets = [];
+    if (atomCrawler && typeof atomCrawler.getNearbyTextTargets === 'function') {
+      textTargets = atomCrawler.getNearbyTextTargets(atomScreenX, atomScreenY, 320, NUM_EJECTED);
+    }
+
+    for (let k = 0; k < NUM_EJECTED; k++) {
+      const elItem = electrons[k];
+      const startPt = getOrbitPoint(elItem, elItem.angle);
+      ejectedStartPos[k].copy(startPt);
+
+      if (textTargets[k]) {
+        // Convert screen target to atomRoot local coordinates
+        ejectedTargets[k].set(
+          textTargets[k].x - atomRoot.position.x,
+          (innerH - textTargets[k].y) - atomRoot.position.y,
+          0
+        );
+      } else {
+        const fallbackAngle = (k * 2.1) + 0.4;
+        ejectedTargets[k].set(
+          Math.cos(fallbackAngle) * 160,
+          Math.sin(fallbackAngle) * 160,
+          0
+        );
+      }
+
+      // Outward curved quadratic Bezier control point
+      const dx = ejectedTargets[k].x - startPt.x;
+      const dy = ejectedTargets[k].y - startPt.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const perpX = -dy / len;
+      const perpY = dx / len;
+      const side = (k % 2 === 0) ? 1 : -1;
+      ejectedMidOut[k].set(
+        (startPt.x + ejectedTargets[k].x) * 0.5 + perpX * 38.0 * side,
+        (startPt.y + ejectedTargets[k].y) * 0.5 + perpY * 38.0 * side,
+        (startPt.z + ejectedTargets[k].z) * 0.5 + 18.0
+      );
+    }
+
+    // 4. Page reaction text glitch (closest first, 10ms steps, up to ~40 elements)
+    if (!mobile && atomCrawler && typeof atomCrawler.triggerPageGlitch === 'function') {
+      atomCrawler.triggerPageGlitch(atomScreenX, atomScreenY, 260, 40);
+    }
+
     return true;
   }
 
@@ -907,10 +1189,38 @@ import { attachAtomReactivity } from './atom-react.js';
     const currentPoint = getOrbitPoint(item, item.angle);
     const prevPoint = getOrbitPoint(item, item.angle - 0.03);
 
-    // Apply electron burst expansion on click
-    if (clickEffectsActive && !reduceMotion) {
-      currentPoint.multiplyScalar(electronBurstScale);
-      prevPoint.multiplyScalar(electronBurstScale);
+    // Ejected electrons detachment on energy discharge (0 to 700ms)
+    if (isDischargeActive && !reduceMotion && item.index < NUM_EJECTED && dischargeTime <= 0.70) {
+      const k = item.index;
+      const start = ejectedStartPos[k];
+      const midOut = ejectedMidOut[k];
+      const target = ejectedTargets[k];
+
+      if (dischargeTime <= 0.35) {
+        // Outward flight to text element (0 to 350ms)
+        const u = dischargeTime / 0.35;
+        const easeU = u * (2.0 - u);
+        const invU = 1.0 - easeU;
+        currentPoint.set(
+          invU * invU * start.x + 2 * invU * easeU * midOut.x + easeU * easeU * target.x,
+          invU * invU * start.y + 2 * invU * easeU * midOut.y + easeU * easeU * target.y,
+          invU * invU * start.z + 2 * invU * easeU * midOut.z + easeU * easeU * target.z
+        );
+      } else {
+        // Return flight smoothly rejoining moving orbit (350ms to 700ms)
+        const u = (dischargeTime - 0.35) / 0.35;
+        const easeU = u * u;
+        const invU = 1.0 - easeU;
+        const curOrbitPt = getOrbitPoint(item, item.angle);
+        const midReturnX = (target.x + curOrbitPt.x) * 0.5 - (midOut.x - (start.x + target.x) * 0.5) * 0.5;
+        const midReturnY = (target.y + curOrbitPt.y) * 0.5 - (midOut.y - (start.y + target.y) * 0.5) * 0.5;
+        const midReturnZ = (target.z + curOrbitPt.z) * 0.5;
+        currentPoint.set(
+          invU * invU * target.x + 2 * invU * easeU * midReturnX + easeU * easeU * curOrbitPt.x,
+          invU * invU * target.y + 2 * invU * easeU * midReturnY + easeU * easeU * curOrbitPt.y,
+          invU * invU * target.z + 2 * invU * easeU * midReturnZ + easeU * easeU * curOrbitPt.z
+        );
+      }
     }
 
     item.mesh.position.copy(currentPoint);
@@ -929,9 +1239,6 @@ import { attachAtomReactivity } from './atom-react.js';
     for (let i = 0; i < trailCount; i++) {
       const trailAngle = item.angle - (i * 0.024 * speedBoost) / keplerFactor;
       const trailPt = getOrbitPoint(item, trailAngle);
-      if (clickEffectsActive && !reduceMotion) {
-        trailPt.multiplyScalar(electronBurstScale);
-      }
       positions[i * 3]     = trailPt.x;
       positions[i * 3 + 1] = trailPt.y;
       positions[i * 3 + 2] = trailPt.z;
@@ -959,63 +1266,294 @@ import { attachAtomReactivity } from './atom-react.js';
       if (atomCrawler) atomCrawler.update(time, dt);
     }
 
-    // ─── SHOCKWAVE EXPANSION ───
-    if (isShockwaveActive && !reduceMotion) {
-      shockwaveTime += dt;
-      const progress = shockwaveTime / 0.8;
-      if (progress >= 1.0) {
-        isShockwaveActive = false;
-        shockwaveMesh.visible = false;
-      } else {
-        const ease = 1.0 - Math.pow(1.0 - progress, 2.5);
-        const radius = maxShockwaveRadius * ease;
-        shockwaveMesh.position.set(atomRoot.position.x, atomRoot.position.y, 1);
-        shockwaveMesh.scale.set(radius, radius, 1);
-        shockwaveMat.opacity = (1.0 - progress) * 0.88 * atomOpacity;
-        shockwaveMesh.visible = true;
+    // ─── ENERGY DISCHARGE SEQUENCE TIMINGS ───
+    if (isDischargeActive) {
+      dischargeTime += dt;
+      if (dischargeTime >= DISCHARGE_DURATION) {
+        isDischargeActive = false;
+        dischargeTime = 0;
+        internalAnimRate = 1.0;
+        pulseAfterSparks = 1.0;
+        squishScale = 1.0;
+        nucleusFlashSprite.visible = false;
+        arcCoreGeo.setDrawRange(0, 0);
+        arcGlowGeo.setDrawRange(0, 0);
+        targetSparkGeo.setDrawRange(0, 0);
       }
-    } else {
-      shockwaveMesh.visible = false;
     }
 
-    // ─── ELECTRON BURST & SQUISH TIMINGS ───
-    if (clickEffectsActive) {
-      clickEffectsTime += dt;
-      if (!reduceMotion) {
-        // Outward acceleration to 1.6x over 0.25s, then spring back with damping & overshoot
-        if (clickEffectsTime < 0.25) {
-          const tNorm = clickEffectsTime / 0.25;
-          electronBurstScale = 1.0 + 0.6 * (1.0 - Math.pow(1.0 - tNorm, 2.0));
-        } else if (clickEffectsTime < 0.8) {
-          const tDecay = (clickEffectsTime - 0.25) / 0.55;
-          electronBurstScale = 1.0 + 0.6 * Math.exp(-tDecay * 5.0) * Math.cos(tDecay * Math.PI * 3.5);
-        } else {
-          electronBurstScale = 1.0;
-        }
-
-        // Nucleus squish sequence: 0.9 -> 1.08 -> 1.0
-        if (clickEffectsTime < 0.12) {
-          const t = clickEffectsTime / 0.12;
-          squishScale = 1.0 + (0.9 - 1.0) * t;
-        } else if (clickEffectsTime < 0.28) {
-          const t = (clickEffectsTime - 0.12) / 0.16;
-          squishScale = 0.9 + (1.08 - 0.9) * t;
-        } else if (clickEffectsTime < 0.45) {
-          const t = (clickEffectsTime - 0.28) / 0.17;
-          squishScale = 1.08 + (1.0 - 1.08) * t;
-        } else {
-          squishScale = 1.0;
-        }
+    if (reduceMotion) {
+      // Reduced motion: soft glow on nucleus for 300ms
+      if (isDischargeActive && dischargeTime < 0.30) {
+        const glowFade = 1.0 - (dischargeTime / 0.30);
+        nucleusFlashSprite.material.opacity = glowFade * 0.45 * atomOpacity;
+        nucleusFlashSprite.visible = true;
+      } else {
+        nucleusFlashSprite.visible = false;
+      }
+      internalAnimRate = 1.0;
+      squishScale = 1.0;
+      pulseAfterSparks = 1.0;
+    } else if (isDischargeActive) {
+      // 1. HIT-STOP (0 to 100ms): 0.15x for 80ms, then ease back to normal over 300ms
+      if (dischargeTime < 0.08) {
+        internalAnimRate = 0.15;
+      } else if (dischargeTime < 0.38) {
+        const tEase = (dischargeTime - 0.08) / 0.30;
+        internalAnimRate = 0.15 + 0.85 * (tEase * (2.0 - tEase));
+      } else {
+        internalAnimRate = 1.0;
       }
 
-      if (clickEffectsTime >= 0.8) {
-        clickEffectsActive = false;
-        electronBurstScale = 1.0;
+      // Nucleus flash: cyan-white additive sprite, intensity ~1.2 for 60ms, then fades
+      if (dischargeTime < 0.06) {
+        nucleusFlashSprite.material.opacity = 1.2 * atomOpacity;
+        nucleusFlashSprite.visible = true;
+      } else if (dischargeTime < 0.22) {
+        const fFade = 1.0 - ((dischargeTime - 0.06) / 0.16);
+        nucleusFlashSprite.material.opacity = 1.2 * fFade * atomOpacity;
+        nucleusFlashSprite.visible = true;
+      } else {
+        nucleusFlashSprite.material.opacity = 0;
+        nucleusFlashSprite.visible = false;
+      }
+
+      // Nucleus squish sequence: 0.9 -> 1.08 -> 1.0
+      if (dischargeTime < 0.08) {
+        const t = dischargeTime / 0.08;
+        squishScale = 1.0 + (0.9 - 1.0) * t;
+      } else if (dischargeTime < 0.22) {
+        const t = (dischargeTime - 0.08) / 0.14;
+        squishScale = 0.9 + (1.08 - 0.9) * t;
+      } else if (dischargeTime < 0.38) {
+        const t = (dischargeTime - 0.22) / 0.16;
+        squishScale = 1.08 + (1.0 - 1.08) * t;
+      } else {
         squishScale = 1.0;
       }
+
+      // Nucleus soft pulse when returning sparks hit (~600 to 850ms)
+      if (dischargeTime >= 0.60 && dischargeTime <= 0.85) {
+        const pProg = (dischargeTime - 0.60) / 0.25;
+        pulseAfterSparks = 1.0 + 0.07 * Math.sin(pProg * Math.PI);
+      } else {
+        pulseAfterSparks = 1.0;
+      }
     } else {
-      electronBurstScale = 1.0;
+      internalAnimRate = 1.0;
       squishScale = 1.0;
+      pulseAfterSparks = 1.0;
+      nucleusFlashSprite.visible = false;
+    }
+
+    // ─── PARTICLE BURST PHYSICS & PULL (0 to 900ms) ───
+    if (sparkActiveCount > 0 && !reduceMotion) {
+      const drag = Math.pow(0.94, dt * 60.0);
+      const lifeAttr = sparkGeo.attributes.aLife;
+      let livingSparks = 0;
+
+      for (let i = 0; i < MAX_SPARKS; i++) {
+        if (sparkLifeArr[i] > 0) {
+          sparkLifeArr[i] -= dt;
+          livingSparks++;
+
+          // After ~450ms, surviving sparks curve back and get pulled into nucleus
+          if (dischargeTime >= 0.45) {
+            const dx = atomRoot.position.x - sparkPositions[i * 3];
+            const dy = atomRoot.position.y - sparkPositions[i * 3 + 1];
+            const dz = atomRoot.position.z - sparkPositions[i * 3 + 2];
+            const dist = Math.hypot(dx, dy, dz) || 1;
+            const pull = 2600.0 * dt;
+            sparkVelocities[i * 3]     += (dx / dist) * pull;
+            sparkVelocities[i * 3 + 1] += (dy / dist) * pull;
+            sparkVelocities[i * 3 + 2] += (dz / dist) * pull;
+          }
+
+          sparkVelocities[i * 3]     *= drag;
+          sparkVelocities[i * 3 + 1] *= drag;
+          sparkVelocities[i * 3 + 2] *= drag;
+
+          sparkPositions[i * 3]     += sparkVelocities[i * 3] * dt;
+          sparkPositions[i * 3 + 1] += sparkVelocities[i * 3 + 1] * dt;
+          sparkPositions[i * 3 + 2] += sparkVelocities[i * 3 + 2] * dt;
+
+          lifeAttr.array[i] = Math.max(0, sparkLifeArr[i] / sparkMaxLifeArr[i]);
+        } else {
+          lifeAttr.array[i] = 0;
+        }
+      }
+
+      sparkGeo.attributes.position.needsUpdate = true;
+      sparkGeo.attributes.aVelocity.needsUpdate = true;
+      lifeAttr.needsUpdate = true;
+      sparkMat.uniforms.uAtomOpacity.value = atomOpacity;
+
+      if (livingSparks === 0) {
+        sparkActiveCount = 0;
+        sparkGeo.setDrawRange(0, 0);
+      }
+    } else {
+      sparkGeo.setDrawRange(0, 0);
+    }
+
+    // ─── LIGHTNING ARCS (50 to 350ms) ───
+    if (isDischargeActive && !reduceMotion && dischargeTime >= 0.05 && dischargeTime <= 0.35 && activeLightningTargets.length > 0) {
+      const innerH = window.innerHeight;
+      const arcT = (dischargeTime - 0.05) / 0.30;
+      const arcOpacity = Math.sin(arcT * Math.PI) * atomOpacity;
+
+      // Re-randomize displacement offsets every 40ms for electric flicker
+      const flickerCycle = Math.floor(dischargeTime / 0.04);
+      if (flickerCycle !== lastArcFlickerCycle) {
+        lastArcFlickerCycle = flickerCycle;
+        randomizeArcOffsets();
+      }
+
+      const activeArcCount = Math.min(MAX_ARCS, activeLightningTargets.length);
+
+      for (let a = 0; a < activeArcCount; a++) {
+        const target = activeLightningTargets[a];
+        const isViolet = (a === 2);
+        const colCore = COL_LIGHT_CYAN;
+        const colEdge = isViolet ? COL_VIOLET : COL_CYAN;
+
+        const startX = atomRoot.position.x;
+        const startY = atomRoot.position.y;
+        const startZ = atomRoot.position.z;
+
+        const endX = target.edgeX;
+        const endY = innerH - target.edgeY;
+        const endZ = 0;
+
+        const dx = endX - startX;
+        const dy = endY - startY;
+        const dLen = Math.hypot(dx, dy) || 1;
+        const normX = -dy / dLen;
+        const normY = dx / dLen;
+
+        const pts = arcPolyPoints[a];
+        pts[0].set(startX, startY, startZ);
+        pts[8].set(endX, endY, endZ);
+
+        const o = arcOffsets[a];
+        // Midpoint displacement hierarchy
+        pts[4].set((startX + endX) * 0.5 + normX * o.mid, (startY + endY) * 0.5 + normY * o.mid, 0);
+        pts[2].set((pts[0].x + pts[4].x) * 0.5 + normX * o.q1, (pts[0].y + pts[4].y) * 0.5 + normY * o.q1, 0);
+        pts[6].set((pts[4].x + pts[8].x) * 0.5 + normX * o.q2, (pts[4].y + pts[8].y) * 0.5 + normY * o.q2, 0);
+        pts[1].set((pts[0].x + pts[2].x) * 0.5 + normX * o.o1, (pts[0].y + pts[2].y) * 0.5 + normY * o.o1, 0);
+        pts[3].set((pts[2].x + pts[4].x) * 0.5 + normX * o.o2, (pts[2].y + pts[4].y) * 0.5 + normY * o.o2, 0);
+        pts[5].set((pts[4].x + pts[6].x) * 0.5 + normX * o.o3, (pts[4].y + pts[6].y) * 0.5 + normY * o.o3, 0);
+        pts[7].set((pts[6].x + pts[8].x) * 0.5 + normX * o.o4, (pts[6].y + pts[8].y) * 0.5 + normY * o.o4, 0);
+
+        // Lower opacity to 40% where arc crosses body paragraphs
+        let crossesParagraph = false;
+        for (let p = 0; p < ARC_POINTS; p++) {
+          const scrX = pts[p].x;
+          const scrY = innerH - pts[p].y;
+          for (let pr = 0; pr < cachedParagraphs.length; pr++) {
+            const pg = cachedParagraphs[pr];
+            if (scrX >= pg.left && scrX <= pg.right && scrY >= pg.top && scrY <= pg.bottom) {
+              crossesParagraph = true;
+              break;
+            }
+          }
+          if (crossesParagraph) break;
+        }
+        const textDim = crossesParagraph ? 0.40 : 1.0;
+        const currentArcOpacity = arcOpacity * textDim;
+
+        // Build tapered ribbon vertices
+        const vOffset = a * ARC_VERTS;
+        for (let s = 0; s < ARC_POINTS; s++) {
+          const u = s / ARC_SEGMENTS;
+          const p = pts[s];
+
+          let tanX, tanY;
+          if (s === 0) {
+            tanX = pts[1].x - p.x; tanY = pts[1].y - p.y;
+          } else if (s === ARC_SEGMENTS) {
+            tanX = p.x - pts[ARC_SEGMENTS - 1].x; tanY = p.y - pts[ARC_SEGMENTS - 1].y;
+          } else {
+            tanX = pts[s + 1].x - pts[s - 1].x; tanY = pts[s + 1].y - pts[s - 1].y;
+          }
+          const tLen = Math.hypot(tanX, tanY) || 1;
+          const pNormX = -tanY / tLen;
+          const pNormY = tanX / tLen;
+
+          // Tapered width: 3px at base -> 1px at tip
+          const coreW = 3.0 * (1.0 - u) + 1.0 * u;
+          const glowW = 10.0 * (1.0 - u) + 3.0 * u;
+
+          const vL = vOffset + s * 2;
+          const vR = vOffset + s * 2 + 1;
+
+          // Core ribbon
+          arcCorePos[vL * 3]     = p.x + pNormX * (coreW * 0.5);
+          arcCorePos[vL * 3 + 1] = p.y + pNormY * (coreW * 0.5);
+          arcCorePos[vL * 3 + 2] = p.z + 1.0;
+
+          arcCorePos[vR * 3]     = p.x - pNormX * (coreW * 0.5);
+          arcCorePos[vR * 3 + 1] = p.y - pNormY * (coreW * 0.5);
+          arcCorePos[vR * 3 + 2] = p.z + 1.0;
+
+          arcCoreCol[vL * 3]     = colCore.r * currentArcOpacity;
+          arcCoreCol[vL * 3 + 1] = colCore.g * currentArcOpacity;
+          arcCoreCol[vL * 3 + 2] = colCore.b * currentArcOpacity;
+
+          arcCoreCol[vR * 3]     = colCore.r * currentArcOpacity;
+          arcCoreCol[vR * 3 + 1] = colCore.g * currentArcOpacity;
+          arcCoreCol[vR * 3 + 2] = colCore.b * currentArcOpacity;
+
+          // Glow ribbon
+          arcGlowPos[vL * 3]     = p.x + pNormX * (glowW * 0.5);
+          arcGlowPos[vL * 3 + 1] = p.y + pNormY * (glowW * 0.5);
+          arcGlowPos[vL * 3 + 2] = p.z + 0.8;
+
+          arcGlowPos[vR * 3]     = p.x - pNormX * (glowW * 0.5);
+          arcGlowPos[vR * 3 + 1] = p.y - pNormY * (glowW * 0.5);
+          arcGlowPos[vR * 3 + 2] = p.z + 0.8;
+
+          const gAlpha = currentArcOpacity * 0.35;
+          arcGlowCol[vL * 3]     = colEdge.r * gAlpha;
+          arcGlowCol[vL * 3 + 1] = colEdge.g * gAlpha;
+          arcGlowCol[vL * 3 + 2] = colEdge.b * gAlpha;
+
+          arcGlowCol[vR * 3]     = colEdge.r * gAlpha;
+          arcGlowCol[vR * 3 + 1] = colEdge.g * gAlpha;
+          arcGlowCol[vR * 3 + 2] = colEdge.b * gAlpha;
+        }
+
+        // Tiny spark burst at target contact end (8 particles)
+        const spOffset = a * TARGET_SPARKS_PER_ARC;
+        const sparkDist = arcT * 18.0;
+        const sFade = (1.0 - arcT) * currentArcOpacity;
+        for (let k = 0; k < TARGET_SPARKS_PER_ARC; k++) {
+          const ang = k * (Math.PI * 2 / TARGET_SPARKS_PER_ARC) + a * 0.7;
+          const idx = (spOffset + k) * 3;
+          targetSparkPos[idx]     = endX + Math.cos(ang) * sparkDist;
+          targetSparkPos[idx + 1] = endY + Math.sin(ang) * sparkDist;
+          targetSparkPos[idx + 2] = endZ + 1.2;
+
+          targetSparkCol[idx]     = colEdge.r * sFade;
+          targetSparkCol[idx + 1] = colEdge.g * sFade;
+          targetSparkCol[idx + 2] = colEdge.b * sFade;
+        }
+      }
+
+      arcCoreGeo.attributes.position.needsUpdate = true;
+      arcCoreGeo.attributes.color.needsUpdate = true;
+      arcGlowGeo.attributes.position.needsUpdate = true;
+      arcGlowGeo.attributes.color.needsUpdate = true;
+      targetSparkGeo.attributes.position.needsUpdate = true;
+      targetSparkGeo.attributes.color.needsUpdate = true;
+
+      arcCoreGeo.setDrawRange(0, activeArcCount * ARC_SEGMENTS * 6);
+      arcGlowGeo.setDrawRange(0, activeArcCount * ARC_SEGMENTS * 6);
+      targetSparkGeo.setDrawRange(0, activeArcCount * TARGET_SPARKS_PER_ARC);
+    } else {
+      arcCoreGeo.setDrawRange(0, 0);
+      arcGlowGeo.setDrawRange(0, 0);
+      targetSparkGeo.setDrawRange(0, 0);
     }
 
     // First-time hint pulse animation
@@ -1037,13 +1575,13 @@ import { attachAtomReactivity } from './atom-react.js';
       if (gripFlashTime >= 0.5) gripFlashActive = false;
     }
 
-    const motionTime = reduceMotion ? 0 : time;
-    updateNucleus(motionTime);
-    nucleusGroup.scale.setScalar(squishScale);
+    internalMotionTime += (reduceMotion ? 0 : dt * internalAnimRate);
+    updateNucleus(internalMotionTime);
+    nucleusGroup.scale.setScalar(squishScale * pulseAfterSparks * hintPulseScale);
 
     // Orbital flare: 1.4x brightness easing back over 0.8s
-    const flareMultiplier = clickEffectsActive
-      ? (reduceMotion ? 1.0 + 0.2 * (1.0 - Math.min(1, clickEffectsTime / 0.4)) : 1.0 + 0.4 * Math.max(0, 1.0 - clickEffectsTime / 0.8))
+    const flareMultiplier = isDischargeActive
+      ? (reduceMotion ? 1.0 + 0.2 * (1.0 - Math.min(1, dischargeTime / 0.4)) : 1.0 + 0.4 * Math.max(0, 1.0 - dischargeTime / 0.8))
       : 1.0;
 
     orbitals.forEach((orb) => {
@@ -1671,6 +2209,9 @@ import { attachAtomReactivity } from './atom-react.js';
     electrons.forEach((e) => {
       e.trail.material.uniforms.uCameraDistance.value = curCameraZ;
     });
+    if (sparkMat && sparkMat.uniforms && sparkMat.uniforms.uCameraDistance) {
+      sparkMat.uniforms.uCameraDistance.value = curCameraZ;
+    }
   }
 
   window.addEventListener('resize', resize, { passive: true });
@@ -1701,7 +2242,8 @@ import { attachAtomReactivity } from './atom-react.js';
     velocity,
     triggerClickEffects,
     triggerHintPulse,
-    get isShockwaveActive() { return isShockwaveActive; },
+    get isDischargeActive() { return isDischargeActive; },
+    get isShockwaveActive() { return isDischargeActive; },
     get atomOpacity() { return atomOpacity; },
     set atomOpacity(value) { atomOpacity = THREE.MathUtils.clamp(value, 0, 1); },
     get position() { return atomRoot.position; },

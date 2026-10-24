@@ -625,6 +625,107 @@ export function attachAtomReactivity(atom) {
     triggerGripFlash() {
       gripFlashProgress = 1.0;
     },
+    getNearbyReactiveTargets(screenX, screenY, maxDist = 320, maxCount = 6) {
+      const innerW = window.innerWidth;
+      const innerH = window.innerHeight;
+      const seenElements = new Set();
+      const candidates = [];
+
+      for (let i = 0; i < anchors.length; i++) {
+        const a = anchors[i];
+        if (!a.element || seenElements.has(a.element)) continue;
+
+        const rect = a.element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        if (rect.bottom < 0 || rect.top > innerH || rect.right < 0 || rect.left > innerW) continue;
+
+        const clampX = Math.max(rect.left, Math.min(screenX, rect.right));
+        const clampY = Math.max(rect.top, Math.min(screenY, rect.bottom));
+        const dist = Math.hypot(clampX - screenX, clampY - screenY);
+
+        if (dist <= maxDist) {
+          seenElements.add(a.element);
+          candidates.push({
+            element: a.element,
+            edgeX: clampX,
+            edgeY: clampY,
+            dist,
+          });
+        }
+      }
+
+      candidates.sort((a, b) => a.dist - b.dist);
+      return candidates.slice(0, maxCount);
+    },
+
+    getNearbyTextTargets(screenX, screenY, maxDist = 320, count = 3) {
+      const innerW = window.innerWidth;
+      const innerH = window.innerHeight;
+      const seenElements = new Set();
+      const textCandidates = [];
+
+      for (let i = 0; i < anchors.length; i++) {
+        const a = anchors[i];
+        if (a.type !== 'text' || !a.element || seenElements.has(a.element)) continue;
+
+        const rect = a.element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        if (rect.bottom < 0 || rect.top > innerH || rect.right < 0 || rect.left > innerW) continue;
+
+        const elMidX = rect.left + rect.width * 0.5;
+        const elMidY = rect.top + rect.height * 0.5;
+        const dist = Math.hypot(elMidX - screenX, elMidY - screenY);
+
+        if (dist <= maxDist) {
+          seenElements.add(a.element);
+          textCandidates.push({
+            element: a.element,
+            x: elMidX,
+            y: elMidY,
+            dist,
+          });
+        }
+      }
+
+      textCandidates.sort((a, b) => a.dist - b.dist);
+      return textCandidates.slice(0, count);
+    },
+
+    triggerPageGlitch(screenX, screenY, maxDist = 260, maxCount = 40) {
+      const innerW = window.innerWidth;
+      const innerH = window.innerHeight;
+      const textEls = document.querySelectorAll('h1, h2, h3, h4, p, span, li, a');
+      const items = [];
+
+      for (let i = 0; i < textEls.length; i++) {
+        const el = textEls[i];
+        if (el.closest('#atomGuideMenu, #atomBubble, #atomClickTarget')) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
+        if (r.bottom < 0 || r.top > innerH || r.right < 0 || r.left > innerW) continue;
+
+        const cx = r.left + r.width * 0.5;
+        const cy = r.top + r.height * 0.5;
+        const dist = Math.hypot(cx - screenX, cy - screenY);
+        if (dist <= maxDist) {
+          items.push({ el, dist });
+        }
+      }
+
+      items.sort((a, b) => a.dist - b.dist);
+      const chosen = items.slice(0, maxCount);
+
+      chosen.forEach((item, idx) => {
+        const stepDelay = Math.min(300, idx * 10);
+        setTimeout(() => {
+          item.el.classList.add('atom-text-glitch');
+          setTimeout(() => {
+            item.el.classList.remove('atom-text-glitch');
+          }, 320);
+        }, 50 + stepDelay);
+      });
+    },
+
     destroy() {
       style.remove();
       tendrils.forEach((t) => {
