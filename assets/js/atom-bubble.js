@@ -24,7 +24,7 @@
     },
     about: {
       label: '01 // ABOUT',
-      text: 'Meet Gerald, a Cum Laude IT graduate who has already shipped two production systems.',
+      text: 'Meet Gerald, a Cum Laude IT graduate who has already shipped real systems.',
     },
     experience: {
       label: '02 // EXPERIENCE',
@@ -71,7 +71,7 @@
      ═══════════════════════════════════════════════ */
   const ATOM_FACTS = [
     "Cum Laude graduate in BS Information Technology.",
-    "Two production systems are live right now.",
+    "His work is already live and used by real people.",
     "PiyuGuide has real-time WebSocket chat and WebRTC video sessions.",
     "The municipal platform runs on a Hostinger VPS that Gerald administers.",
     "CHED Tulong Dunong scholar, and proud of it.",
