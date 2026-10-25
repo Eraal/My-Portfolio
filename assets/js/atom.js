@@ -852,27 +852,30 @@ import { attachAtomReactivity } from './atom-react.js';
     opacity: 0,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    depthTest: false,
   }));
-  const flashSize = mobile ? 92 : 144;
+  const flashSize = mobile ? 180 : 260;
   nucleusFlashSprite.scale.set(flashSize, flashSize, 1);
-  nucleusFlashSprite.position.set(0, 0, 2);
+  nucleusFlashSprite.position.set(0, 0, 4);
   nucleusFlashSprite.visible = false;
+  nucleusFlashSprite.renderOrder = 105;
   nucleusGroup.add(nucleusFlashSprite);
 
   // ─── 2. PARTICLE BURST (Custom Shader Streak Points) ───
-  const MAX_SPARKS = mobile ? 100 : 250;
+  const MAX_SPARKS = mobile ? 120 : 260;
   const sparkPositions = new Float32Array(MAX_SPARKS * 3);
   const sparkVelocities = new Float32Array(MAX_SPARKS * 3);
   const sparkColors = new Float32Array(MAX_SPARKS * 3);
   const sparkLifeArr = new Float32Array(MAX_SPARKS);
   const sparkMaxLifeArr = new Float32Array(MAX_SPARKS);
+  const sparkLifeAttrArr = new Float32Array(MAX_SPARKS);
   let sparkActiveCount = 0;
 
   const sparkGeo = new THREE.BufferGeometry();
   sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
   sparkGeo.setAttribute('aVelocity', new THREE.BufferAttribute(sparkVelocities, 3));
   sparkGeo.setAttribute('color', new THREE.BufferAttribute(sparkColors, 3));
-  sparkGeo.setAttribute('aLife', new THREE.BufferAttribute(new Float32Array(MAX_SPARKS), 1));
+  sparkGeo.setAttribute('aLife', new THREE.BufferAttribute(sparkLifeAttrArr, 1));
   sparkGeo.setDrawRange(0, 0);
 
   const sparkVertShader = `
@@ -882,6 +885,7 @@ import { attachAtomReactivity } from './atom-react.js';
     varying vec2 vVelocity2D;
     varying float vLife;
     uniform float uCameraDistance;
+    uniform float uPixelRatio;
 
     void main() {
       vColor = color;
@@ -889,8 +893,8 @@ import { attachAtomReactivity } from './atom-react.js';
       vLife = aLife;
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       float speed = length(aVelocity.xy);
-      float ptSize = clamp(speed * 0.038, 6.0, 18.0);
-      gl_PointSize = ptSize * (uCameraDistance / -mvPosition.z);
+      float ptSize = clamp(speed * 0.075, 16.0, 42.0);
+      gl_PointSize = ptSize * uPixelRatio * (uCameraDistance / max(1.0, -mvPosition.z));
       gl_Position = projectionMatrix * mvPosition;
     }
   `;
@@ -907,10 +911,20 @@ import { attachAtomReactivity } from './atom-react.js';
       vec2 dir = normalize(vVelocity2D + vec2(0.0001, 0.0001));
       float dPerp = abs(p.x * dir.y - p.y * dir.x);
       float dAlong = abs(dot(p, dir));
-      float streak = smoothstep(0.40, 0.03, dPerp * 3.8) * smoothstep(0.5, 0.05, dAlong);
-      float a = streak * vLife * uAtomOpacity;
+
+      // Crisp luminous streak oriented along velocity direction
+      float width = mix(0.20, 0.06, clamp(dAlong * 2.0, 0.0, 1.0));
+      float core = 1.0 - smoothstep(0.0, width, dPerp);
+      float trail = 1.0 - smoothstep(0.04, 0.48, dAlong);
+      float glow = exp(-dPerp * 12.0) * 0.7;
+
+      // Soft circular point fallback so even slowing sparks glow
+      float rDist = length(p);
+      float pointGlow = exp(-rDist * 7.0) * 0.5;
+
+      float a = (core * trail + glow * trail + pointGlow) * vLife * uAtomOpacity * 2.0;
       if (a <= 0.01) discard;
-      gl_FragColor = vec4(vColor, a);
+      gl_FragColor = vec4(vColor, clamp(a, 0.0, 1.0));
     }
   `;
 
@@ -918,15 +932,18 @@ import { attachAtomReactivity } from './atom-react.js';
     vertexShader: sparkVertShader,
     fragmentShader: sparkFragShader,
     uniforms: {
-      uCameraDistance: { value: 1000 },
+      uCameraDistance: { value: 1400 },
+      uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
       uAtomOpacity: { value: 1.0 },
     },
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    depthTest: false,
     vertexColors: true,
   });
   const sparkPointsMesh = new THREE.Points(sparkGeo, sparkMat);
+  sparkPointsMesh.renderOrder = 120;
   scene.add(sparkPointsMesh);
 
   // ─── 3. LIGHTNING ARCS (Jagged Tapered Ribbons & Target Sparks) ───
@@ -973,6 +990,7 @@ import { attachAtomReactivity } from './atom-react.js';
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    depthTest: false,
     side: THREE.DoubleSide,
   });
   const arcGlowMat = new THREE.MeshBasicMaterial({
@@ -980,6 +998,7 @@ import { attachAtomReactivity } from './atom-react.js';
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    depthTest: false,
     side: THREE.DoubleSide,
   });
 
@@ -987,6 +1006,8 @@ import { attachAtomReactivity } from './atom-react.js';
   const arcGlowMesh = new THREE.Mesh(arcGlowGeo, arcGlowMat);
   arcCoreGeo.setDrawRange(0, 0);
   arcGlowGeo.setDrawRange(0, 0);
+  arcCoreMesh.renderOrder = 115;
+  arcGlowMesh.renderOrder = 114;
   scene.add(arcGlowMesh);
   scene.add(arcCoreMesh);
 
@@ -1001,15 +1022,17 @@ import { attachAtomReactivity } from './atom-react.js';
   targetSparkGeo.setDrawRange(0, 0);
 
   const targetSparkMat = new THREE.PointsMaterial({
-    size: 4.8,
+    size: 6.0,
     map: sprite,
     transparent: true,
     vertexColors: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    depthTest: false,
     sizeAttenuation: false,
   });
   const targetSparkMesh = new THREE.Points(targetSparkGeo, targetSparkMat);
+  targetSparkMesh.renderOrder = 116;
   scene.add(targetSparkMesh);
 
   // Reusable points for arc polyline midpoint displacement
@@ -1087,10 +1110,10 @@ import { attachAtomReactivity } from './atom-react.js';
     for (let i = 0; i < MAX_SPARKS; i++) {
       sparkPositions[i * 3]     = rootPos.x;
       sparkPositions[i * 3 + 1] = rootPos.y;
-      sparkPositions[i * 3 + 2] = rootPos.z + (Math.random() - 0.5) * 8.0;
+      sparkPositions[i * 3 + 2] = rootPos.z + (Math.random() - 0.5) * 12.0;
 
       const theta = Math.random() * Math.PI * 2;
-      const speed = 250 + Math.random() * 450; // 250 to 700 px/s
+      const speed = 280 + Math.random() * 460; // 280 to 740 px/s
       sparkVelocities[i * 3]     = Math.cos(theta) * speed;
       sparkVelocities[i * 3 + 1] = Math.sin(theta) * speed;
       sparkVelocities[i * 3 + 2] = (Math.random() - 0.5) * 60.0;
@@ -1104,15 +1127,33 @@ import { attachAtomReactivity } from './atom-react.js';
       const life = 0.5 + Math.random() * 0.4; // 0.5 to 0.9s
       sparkLifeArr[i] = life;
       sparkMaxLifeArr[i] = life;
+      sparkLifeAttrArr[i] = 1.0;
     }
     sparkActiveCount = MAX_SPARKS;
     sparkGeo.setDrawRange(0, MAX_SPARKS);
+    sparkGeo.attributes.position.needsUpdate = true;
+    sparkGeo.attributes.aVelocity.needsUpdate = true;
+    sparkGeo.attributes.color.needsUpdate = true;
+    sparkGeo.attributes.aLife.needsUpdate = true;
 
     // 2. Query nearby reactive targets for lightning arcs (4 to 6 nearest within ~320px)
     if (atomCrawler && typeof atomCrawler.getNearbyReactiveTargets === 'function') {
       activeLightningTargets = atomCrawler.getNearbyReactiveTargets(atomScreenX, atomScreenY, 320, MAX_ARCS);
     } else {
       activeLightningTargets = [];
+    }
+
+    // Always ensure MAX_ARCS targets so vibrant electric bolts fire in all directions
+    const needed = MAX_ARCS - activeLightningTargets.length;
+    for (let f = 0; f < needed; f++) {
+      const fallbackAngle = (f / Math.max(1, needed)) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+      const fallbackRadius = 140 + Math.random() * 110;
+      activeLightningTargets.push({
+        element: null,
+        edgeX: atomScreenX + Math.cos(fallbackAngle) * fallbackRadius,
+        edgeY: atomScreenY + Math.sin(fallbackAngle) * fallbackRadius,
+        dist: fallbackRadius,
+      });
     }
 
     // Flash struck element borders
@@ -1180,6 +1221,8 @@ import { attachAtomReactivity } from './atom-react.js';
     hintPulseTime = 0;
   }
 
+  let electronBurstScale = 1.0;
+
   function updateElectron(item, dt, speedBoost) {
     const pt = getOrbitPoint(item, item.angle);
     const distToCenter = pt.length();
@@ -1190,7 +1233,8 @@ import { attachAtomReactivity } from './atom-react.js';
     const prevPoint = getOrbitPoint(item, item.angle - 0.03);
 
     // Ejected electrons detachment on energy discharge (0 to 700ms)
-    if (isDischargeActive && !reduceMotion && item.index < NUM_EJECTED && dischargeTime <= 0.70) {
+    const isDetached = isDischargeActive && !reduceMotion && item.index < NUM_EJECTED && dischargeTime <= 0.70;
+    if (isDetached) {
       const k = item.index;
       const start = ejectedStartPos[k];
       const midOut = ejectedMidOut[k];
@@ -1211,7 +1255,7 @@ import { attachAtomReactivity } from './atom-react.js';
         const u = (dischargeTime - 0.35) / 0.35;
         const easeU = u * u;
         const invU = 1.0 - easeU;
-        const curOrbitPt = getOrbitPoint(item, item.angle);
+        const curOrbitPt = getOrbitPoint(item, item.angle).multiplyScalar(electronBurstScale);
         const midReturnX = (target.x + curOrbitPt.x) * 0.5 - (midOut.x - (start.x + target.x) * 0.5) * 0.5;
         const midReturnY = (target.y + curOrbitPt.y) * 0.5 - (midOut.y - (start.y + target.y) * 0.5) * 0.5;
         const midReturnZ = (target.z + curOrbitPt.z) * 0.5;
@@ -1221,6 +1265,9 @@ import { attachAtomReactivity } from './atom-react.js';
           invU * invU * target.z + 2 * invU * easeU * midReturnZ + easeU * easeU * curOrbitPt.z
         );
       }
+    } else {
+      currentPoint.multiplyScalar(electronBurstScale);
+      prevPoint.multiplyScalar(electronBurstScale);
     }
 
     item.mesh.position.copy(currentPoint);
@@ -1232,19 +1279,23 @@ import { attachAtomReactivity } from './atom-react.js';
     item.mesh.scale.set(1.0, stretch, 1.0);
 
     const isBehind = currentPoint.z < -10;
-    item.mesh.material.emissiveIntensity = isBehind ? 0.35 : 0.72;
-    item.glow.material.opacity = atomOpacity * (isBehind ? 0.18 : 0.42);
+    const effOpacity = isDischargeActive ? 1.0 : atomOpacity;
+    item.mesh.material.emissiveIntensity = isBehind ? 0.45 : 0.85;
+    item.glow.material.opacity = effOpacity * (isBehind ? 0.25 : 0.55);
 
     const positions = item.trail.geometry.attributes.position.array;
     for (let i = 0; i < trailCount; i++) {
       const trailAngle = item.angle - (i * 0.024 * speedBoost) / keplerFactor;
       const trailPt = getOrbitPoint(item, trailAngle);
+      if (!isDetached) {
+        trailPt.multiplyScalar(electronBurstScale);
+      }
       positions[i * 3]     = trailPt.x;
       positions[i * 3 + 1] = trailPt.y;
       positions[i * 3 + 2] = trailPt.z;
     }
     item.trail.geometry.attributes.position.needsUpdate = true;
-    item.trail.material.uniforms.uOpacity.value = atomOpacity * (isBehind ? 0.5 : 0.85);
+    item.trail.material.uniforms.uOpacity.value = effOpacity * (isBehind ? 0.6 : 0.95);
   }
 
   let atomCrawler = null;
@@ -1305,13 +1356,24 @@ import { attachAtomReactivity } from './atom-react.js';
         internalAnimRate = 1.0;
       }
 
-      // Nucleus flash: cyan-white additive sprite, intensity ~1.2 for 60ms, then fades
+      // Compute dramatic electron cloud & orbital expansion blast (1.65x radius)
+      if (dischargeTime < 0.22) {
+        const tNorm = dischargeTime / 0.22;
+        electronBurstScale = 1.0 + 0.65 * (1.0 - Math.pow(1.0 - tNorm, 2.0));
+      } else if (dischargeTime < 0.75) {
+        const tDecay = (dischargeTime - 0.22) / 0.53;
+        electronBurstScale = 1.0 + 0.65 * Math.exp(-tDecay * 4.8) * Math.cos(tDecay * Math.PI * 3.0);
+      } else {
+        electronBurstScale = 1.0;
+      }
+
+      // Nucleus flash: cyan-white additive sprite, intense flash for 60ms, then fades
       if (dischargeTime < 0.06) {
-        nucleusFlashSprite.material.opacity = 1.2 * atomOpacity;
+        nucleusFlashSprite.material.opacity = 1.4;
         nucleusFlashSprite.visible = true;
       } else if (dischargeTime < 0.22) {
         const fFade = 1.0 - ((dischargeTime - 0.06) / 0.16);
-        nucleusFlashSprite.material.opacity = 1.2 * fFade * atomOpacity;
+        nucleusFlashSprite.material.opacity = 1.4 * fFade;
         nucleusFlashSprite.visible = true;
       } else {
         nucleusFlashSprite.material.opacity = 0;
@@ -1341,6 +1403,7 @@ import { attachAtomReactivity } from './atom-react.js';
       }
     } else {
       internalAnimRate = 1.0;
+      electronBurstScale = 1.0;
       squishScale = 1.0;
       pulseAfterSparks = 1.0;
       nucleusFlashSprite.visible = false;
@@ -1386,7 +1449,7 @@ import { attachAtomReactivity } from './atom-react.js';
       sparkGeo.attributes.position.needsUpdate = true;
       sparkGeo.attributes.aVelocity.needsUpdate = true;
       lifeAttr.needsUpdate = true;
-      sparkMat.uniforms.uAtomOpacity.value = atomOpacity;
+      sparkMat.uniforms.uAtomOpacity.value = 1.0;
 
       if (livingSparks === 0) {
         sparkActiveCount = 0;
@@ -1400,7 +1463,7 @@ import { attachAtomReactivity } from './atom-react.js';
     if (isDischargeActive && !reduceMotion && dischargeTime >= 0.05 && dischargeTime <= 0.35 && activeLightningTargets.length > 0) {
       const innerH = window.innerHeight;
       const arcT = (dischargeTime - 0.05) / 0.30;
-      const arcOpacity = Math.sin(arcT * Math.PI) * atomOpacity;
+      const arcOpacity = Math.sin(arcT * Math.PI);
 
       // Re-randomize displacement offsets every 40ms for electric flicker
       const flickerCycle = Math.floor(dischargeTime / 0.04);
@@ -1445,7 +1508,7 @@ import { attachAtomReactivity } from './atom-react.js';
         pts[5].set((pts[4].x + pts[6].x) * 0.5 + normX * o.o3, (pts[4].y + pts[6].y) * 0.5 + normY * o.o3, 0);
         pts[7].set((pts[6].x + pts[8].x) * 0.5 + normX * o.o4, (pts[6].y + pts[8].y) * 0.5 + normY * o.o4, 0);
 
-        // Lower opacity to 40% where arc crosses body paragraphs
+        // Slightly lower opacity where arc crosses body paragraphs
         let crossesParagraph = false;
         for (let p = 0; p < ARC_POINTS; p++) {
           const scrX = pts[p].x;
@@ -1459,7 +1522,7 @@ import { attachAtomReactivity } from './atom-react.js';
           }
           if (crossesParagraph) break;
         }
-        const textDim = crossesParagraph ? 0.40 : 1.0;
+        const textDim = crossesParagraph ? 0.65 : 1.0;
         const currentArcOpacity = arcOpacity * textDim;
 
         // Build tapered ribbon vertices
@@ -1480,9 +1543,9 @@ import { attachAtomReactivity } from './atom-react.js';
           const pNormX = -tanY / tLen;
           const pNormY = tanX / tLen;
 
-          // Tapered width: 3px at base -> 1px at tip
-          const coreW = 3.0 * (1.0 - u) + 1.0 * u;
-          const glowW = 10.0 * (1.0 - u) + 3.0 * u;
+          // Tapered width: 4.0px at base -> 1.5px at tip
+          const coreW = 4.0 * (1.0 - u) + 1.5 * u;
+          const glowW = 14.0 * (1.0 - u) + 4.5 * u;
 
           const vL = vOffset + s * 2;
           const vR = vOffset + s * 2 + 1;
@@ -1513,7 +1576,7 @@ import { attachAtomReactivity } from './atom-react.js';
           arcGlowPos[vR * 3 + 1] = p.y - pNormY * (glowW * 0.5);
           arcGlowPos[vR * 3 + 2] = p.z + 0.8;
 
-          const gAlpha = currentArcOpacity * 0.35;
+          const gAlpha = currentArcOpacity * 0.45;
           arcGlowCol[vL * 3]     = colEdge.r * gAlpha;
           arcGlowCol[vL * 3 + 1] = colEdge.g * gAlpha;
           arcGlowCol[vL * 3 + 2] = colEdge.b * gAlpha;
@@ -1582,15 +1645,18 @@ import { attachAtomReactivity } from './atom-react.js';
 
     // Orbital flare: 1.4x brightness easing back over 0.8s
     const flareMultiplier = isDischargeActive
-      ? (reduceMotion ? 1.0 + 0.2 * (1.0 - Math.min(1, dischargeTime / 0.4)) : 1.0 + 0.4 * Math.max(0, 1.0 - dischargeTime / 0.8))
+      ? (reduceMotion ? 1.0 + 0.2 * (1.0 - Math.min(1, dischargeTime / 0.4)) : 1.0 + 0.45 * Math.max(0, 1.0 - dischargeTime / 0.8))
       : 1.0;
 
+    const effOrbitalOpacity = isDischargeActive ? 1.0 : atomOpacity;
     orbitals.forEach((orb) => {
       orb.uniforms.uTime.value = motionTime;
-      orb.uniforms.uOpacity.value = atomOpacity * orb.def.brightness * flareMultiplier;
+      orb.uniforms.uOpacity.value = effOrbitalOpacity * orb.def.brightness * flareMultiplier;
       orb.points.rotation.z = motionTime * orb.def.speed * 0.35;
       orb.coreLine.rotation.z = motionTime * orb.def.speed * 0.35;
-      orb.coreLine.material.opacity = atomOpacity * orb.def.coreOpacity * flareMultiplier;
+      orb.points.scale.setScalar(electronBurstScale);
+      orb.coreLine.scale.setScalar(electronBurstScale);
+      orb.coreLine.material.opacity = effOrbitalOpacity * orb.def.coreOpacity * flareMultiplier;
     });
 
     shellUniforms.uTime.value = motionTime;
@@ -2210,8 +2276,13 @@ import { attachAtomReactivity } from './atom-react.js';
     electrons.forEach((e) => {
       e.trail.material.uniforms.uCameraDistance.value = curCameraZ;
     });
-    if (sparkMat && sparkMat.uniforms && sparkMat.uniforms.uCameraDistance) {
-      sparkMat.uniforms.uCameraDistance.value = curCameraZ;
+    if (sparkMat && sparkMat.uniforms) {
+      if (sparkMat.uniforms.uCameraDistance) {
+        sparkMat.uniforms.uCameraDistance.value = curCameraZ;
+      }
+      if (sparkMat.uniforms.uPixelRatio) {
+        sparkMat.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio || 1, 2);
+      }
     }
   }
 

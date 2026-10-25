@@ -615,7 +615,7 @@ export function attachAtomReactivity(atom) {
       return bodyScreenX >= sL && bodyScreenX <= sR && bodyScreenY >= sT && bodyScreenY <= sB;
     });
 
-    const targetOpacity = overlapsParagraph ? 0.35 : 1.0;
+    const targetOpacity = (overlapsParagraph && !atom.isDischargeActive) ? 0.35 : 1.0;
     atom.atomOpacity += (targetOpacity - atom.atomOpacity) * Math.min(1, dt * 6.0);
     atom.canvas.style.opacity = atom.atomOpacity.toFixed(2);
   }
