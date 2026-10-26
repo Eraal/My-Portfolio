@@ -784,7 +784,6 @@ body {
 
 @media print {
   nav, #hero, #projects, #certifications, #contact, #experience, .no-print { display: none !important; }
-  #cv { padding-top: 0 !important; }
   .print-resume-btn { display: inline-block; }
   body { background: #fff; color: #000; }
 }
@@ -869,8 +868,7 @@ body {
 #experience,
 #projects,
 #certifications,
-#contact,
-#cv {
+#contact {
   position: relative;
   z-index: 1;
 }
@@ -891,8 +889,7 @@ header#hero {
 #experience::before,
 #projects::before,
 #certifications::before,
-#contact::before,
-#cv::before {
+#contact::before {
   content: "";
   position: absolute;
   inset: 0;

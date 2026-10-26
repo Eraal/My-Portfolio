@@ -35,15 +35,15 @@
       text: "Four projects here, and two are live right now. Try 'Visit Live Site'!",
     },
     cv: {
-      label: '04 // RESUME',
-      text: 'Want the full story? You can download the resume right here.',
+      label: 'GUIDE // RESUME',
+      text: "Downloading Gerald's resume! Thanks for checking it out.",
     },
     certifications: {
-      label: '05 // CERTIFICATIONS',
+      label: '04 // CERTIFICATIONS',
       text: 'DICT certified in data privacy awareness and cybersecurity.',
     },
     contact: {
-      label: '06 // CONTACT',
+      label: '05 // CONTACT',
       text: 'Gerald is open to work. Say hi, email is right here!',
     },
     cards: {
@@ -141,7 +141,7 @@
 
   const menuItems = [
     { label: 'Projects', target: '#projects', aria: 'Navigate to Projects section' },
-    { label: 'Resume', target: '#cv', aria: 'Navigate to Resume section' },
+    { label: 'Resume', action: 'resume', aria: 'Download Gerald\'s resume' },
     { label: 'Contact', target: '#contact', aria: 'Navigate to Contact section' },
     { label: 'Surprise me', action: 'surprise', aria: 'Show a secret fun fact' },
   ];
@@ -159,6 +159,15 @@
       e.preventDefault();
       if (item.action === 'surprise') {
         showNextFact(true);
+      } else if (item.action === 'resume') {
+        closeMenu();
+        const link = document.createElement('a');
+        link.href = 'assets/cv/resume.pdf';
+        link.download = 'Gerald-Pandaan-Resume.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showMessage('GUIDE // RESUME', "Downloading Gerald's resume!", true);
       } else {
         closeMenu();
         navigateToSection(item.target);
@@ -557,15 +566,11 @@
     const sectionIds = ['hero', 'about', 'experience', 'projects', 'certifications', 'contact'];
     const sectionEls = sectionIds.map((id) => document.getElementById(id)).filter(Boolean);
 
-    // Also check for CV / resume section or anchor
-    const cvEl = document.getElementById('resume') || document.querySelector('.resume-section');
-    if (cvEl) sectionEls.push(cvEl);
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
-            const id = entry.target.id || (entry.target.classList.contains('resume-section') ? 'cv' : null);
+            const id = entry.target.id;
             if (!id || triggeredSections.has(id)) return;
             triggeredSections.add(id);
 
